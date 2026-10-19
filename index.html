@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Competition Games Collection - 2 Entity Battles</title>
+<style>
+  body {
+    margin: 0;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    color: #fff;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+  }
+  h1 {
+    font-size: 36px;
+    margin-bottom: 10px;
+    background: linear-gradient(90deg, #ff00aa, #00ffcc, #ffaa00);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+  }
+  p { text-align: center; max-width: 700px; opacity: 0.9; margin-bottom: 30px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+    width: 100%;
+    max-width: 1100px;
+  }
+  .card {
+    background: rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.15);
+    transition: transform 0.3s, box-shadow 0.3s;
+    text-decoration: none;
+    color: #fff;
+  }
+  .card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 30px rgba(255,0,170,0.4);
+  }
+  .card h2 { margin: 10px 0; font-size: 22px; }
+  .card p { font-size: 14px; opacity: 0.8; }
+  .emoji { font-size: 48px; margin-bottom: 10px; }
+  footer { margin-top: 40px; opacity: 0.6; font-size: 14px; }
+</style>
+</head>
+<body>
+<h1>🔥 Competition Games 🔥</h1>
+<p>Multiple attractive competition games! Two entities fight inside a box. They bounce, collide, grow bigger, and grab 2x / 3x multipliers. Click to boost your favorite! Play and enjoy the battle.</p>
+
+<div class="grid">
+  <a class="card" href="ball_battle.html" target="_blank">
+    <div class="emoji">⚡</div>
+    <h2>Neon Ball Battle</h2>
+    <p>Glowing pink vs cyan balls. Bounce, collide, grow huge with 2x 3x power-ups!</p>
+  </a>
+
+  <a class="card" href="car_clash.html" target="_blank">
+    <div class="emoji">🏎️</div>
+    <h2>Turbo Car Clash</h2>
+    <p>Red vs Blue cars racing and crashing inside the arena. Power boosts!</p>
+  </a>
+
+  <a class="card" href="missile_mayhem.html" target="_blank">
+    <div class="emoji">🚀</div>
+    <h2>Missile Mayhem</h2>
+    <p>Two missiles with flame trails dueling. Boost and explode on hit!</p>
+  </a>
+
+  <a class="card" href="hero_clash.html" target="_blank">
+    <div class="emoji">🦸</div>
+    <h2>Hero vs Villain</h2>
+    <p>Stick-figure heroes bouncing and growing. Who becomes the biggest?</p>
+  </a>
+</div>
+
+<footer>
+  All games are pure HTML/JS Canvas • Mobile friendly • Click on the entities to push them! • For reels & fun competition
+</footer>
+</body>
+</html>
