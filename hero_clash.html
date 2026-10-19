@@ -1,59 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Hero Clash</title>
-<style>
-body{margin:0;background:#0c0c18;color:#fff;font-family:system-ui;display:flex;flex-direction:column;align-items:center}
-h1{margin:8px;background:linear-gradient(90deg,#aa00ff,#00ffaa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-canvas{border:3px solid #333;border-radius:12px;box-shadow:0 0 20px #aa00ff;background:#111122;max-width:100%}
-#info{display:flex;gap:18px;margin:6px;font-size:15px}
-button{padding:8px 16px;background:#aa00ff;color:#fff;border:none;border-radius:20px}
-</style>
-</head>
-<body>
-<h1>🦸 Hero vs Villain</h1>
-<div id="info"><span id="h">Hero: 0</span><span id="v">Villain: 0</span><span id="t">50s</span></div>
-<canvas id="c" width="740" height="450"></canvas>
-<div style="margin:8px"><button onclick="restart()">Restart</button> Arrow / WASD to move</div>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>Hero vs Robot</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#050510;color:#fff;font-family:Arial;display:flex;flex-direction:column;align-items:center;min-height:100vh;overflow:hidden;touch-action:none}h1{margin:6px 0;background:linear-gradient(90deg,#55ff55,#00aaff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:22px}#info{display:flex;gap:10px;margin:4px;font-size:13px}canvas{border:3px solid #444;border-radius:10px;box-shadow:0 0 20px #55ff55;background:#111;max-width:100%}button{padding:7px 14px;margin:4px;background:#55ff55;color:#000;border:none;border-radius:16px;font-weight:bold;cursor:pointer}</style></head>
+<body><h1>🦸 Hero vs Robot 🦸</h1><div id="info"><div>Hero Size: <span id="sh">20</span></div><div>Robot Size: <span id="sr">20</span></div><div id="t">40s</div></div>
+<canvas id="g" width="700" height="420"></canvas>
+<div><button onclick="init()">Restart</button><button id="rec" onclick="tog()">🔴 Record</button></div>
 <script>
-const cv=document.getElementById('c'),ctx=cv.getContext('2d');
-let W=cv.width,H=cv.height,hero,vill,items=[],parts=[],time=50,over=false,last=Date.now(),keys={};
-function guy(x,y,col,isH){return{x,y,vx:0,vy:0,r:20,col,isH,score:0}}
-function init(){hero=guy(180,225,'#aa00ff',true);vill=guy(560,225,'#ff4400',false);items=[];parts=[];time=50;over=false;spawn();last=Date.now()}
-function spawn(){if(items.length<3&&!over)items.push({x:40+Math.random()*(W-80),y:40+Math.random()*(H-80),v:Math.random()>.5?2:3,l:220});if(!over)setTimeout(spawn,1900)}
-document.addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
-document.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
-function update(){
-  if(over)return;
-  if(Date.now()-last>1000){time--;last=Date.now();document.getElementById('t').textContent=time+'s';if(time<=0){over=true;alert(hero.score>vill.score?'Hero Wins!':'Villain Wins')}}
-  let acc=.4;
-  if(keys.arrowleft||keys.a)hero.vx-=acc; if(keys.arrowright||keys.d)hero.vx+=acc;
-  if(keys.arrowup||keys.w)hero.vy-=acc; if(keys.arrowdown||keys.s)hero.vy+=acc;
-  hero.vx*=.95;hero.vy*=.95;
-  if(items.length){let n=items.reduce((x,y)=>Math.hypot(x.x-vill.x,x.y-vill.y)<Math.hypot(y.x-vill.x,y.y-vill.y)?x:y);let ang=Math.atan2(n.y-vill.y,n.x-vill.x);vill.vx+=Math.cos(ang)*.3;vill.vy+=Math.sin(ang)*.3}
-  vill.vx*=.96;vill.vy*=.96;
-  [hero,vill].forEach(g=>{let sp=Math.hypot(g.vx,g.vy);if(sp>7){g.vx*=7/sp;g.vy*=7/sp}g.x+=g.vx;g.y+=g.vy;if(g.x-g.r<0||g.x+g.r>W)g.vx*=-1;if(g.y-g.r<0||g.y+g.r>H)g.vy*=-1});
-  let d=Math.hypot(hero.x-vill.x,hero.y-vill.y);
-  if(d<hero.r+vill.r){hero.score+=6;vill.score+=6;let nx=(hero.x-vill.x)/d,ny=(hero.y-vill.y)/d;hero.vx+=nx*2;hero.vy+=ny*2;vill.vx-=nx*2;vill.vy-=ny*2;for(let i=0;i<5;i++)parts.push({x:(hero.x+vill.x)/2,y:(hero.y+vill.y)/2,vx:(Math.random()-.5)*6,vy:(Math.random()-.5)*6,l:14})}
-  items=items.filter(it=>{it.l--;[hero,vill].forEach(g=>{if(Math.hypot(g.x-it.x,g.y-it.y)<g.r+12){g.score+=it.v*15;g.r=Math.min(35,g.r+1);it.l=0}});return it.l>0});
-  parts=parts.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.l--;return p.l>0});
-  document.getElementById('h').textContent='Hero: '+Math.round(hero.score);
-  document.getElementById('v').textContent='Villain: '+Math.round(vill.score);
+const cv=document.getElementById('g'),ctx=cv.getContext('2d');let W=700,H=420,h,r,t=40,o=false,lt=Date.now(),rec=false,mr,ch=[];
+function ent(x,y,c,p){return{x,y,vx:0,vy:0,sz:20,c,p}}
+function init(){h=ent(200,H/2,'#55ff55',true);r=ent(500,H/2,'#ff5555',false);t=40;o=false;lt=Date.now()}
+function up(){if(o)return;const n=Date.now();if(n-lt>1000){t--;lt=n;document.getElementById('t').textContent=t+'s';if(t<=0)o=true}
+  if(keys['a'])h.vx-=0.4;if(keys['d'])h.vx+=0.4;if(keys['w'])h.vy-=0.4;if(keys['s'])h.vy+=0.4;
+  const dx=h.x-r.x,dy=h.y-r.y;r.vx+=(dx>0?-0.3:0.3)+(Math.random()-0.5)*0.5;r.vy+=(dy>0?-0.3:0.3)+(Math.random()-0.5)*0.5;
+  [h,r].forEach(b=>{b.vx*=0.92;b.vy*=0.92;b.x+=b.vx;b.y+=b.vy;b.x=Math.max(b.sz,Math.min(W-b.sz,b.x));b.y=Math.max(b.sz,Math.min(H-b.sz,b.y))});
+  const d=Math.hypot(h.x-r.x,h.y-r.y);if(d<h.sz+r.sz){if(h.sz>r.sz)h.sz+=1.5;else r.sz+=1.5;h.vx*=-0.8;r.vx*=-0.8;h.vy*=-0.8;r.vy*=-0.8}
+  document.getElementById('sh').textContent=Math.round(h.sz);document.getElementById('sr').textContent=Math.round(r.sz);
 }
-function draw(){
-  ctx.fillStyle='#111122';ctx.fillRect(0,0,W,H);
-  items.forEach(it=>{ctx.fillStyle='#ff0';ctx.font='bold 18px Arial';ctx.fillText(it.v+'x',it.x,it.y)});
-  parts.forEach(p=>{ctx.fillStyle='#fff';ctx.fillRect(p.x,p.y,3,3)});
-  [hero,vill].forEach(g=>{
-    ctx.fillStyle=g.col;ctx.beginPath();ctx.arc(g.x,g.y,g.r,0,6.28);ctx.fill();
-    ctx.fillStyle='#fff';ctx.font='12px Arial';ctx.textAlign='center';ctx.fillText(g.isH?'H':'V',g.x,g.y+4);
-  });
-}
-function loop(){update();draw();requestAnimationFrame(loop)}
-function restart(){init()}
-init();loop();
-</script>
-</body>
-</html>
+function dr(){ctx.fillStyle='rgba(5,5,16,0.3)';ctx.fillRect(0,0,W,H);[h,r].forEach(b=>{ctx.fillStyle=b.c;ctx.beginPath();ctx.arc(b.x,b.y,b.sz,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='11px Arial';ctx.textAlign='center';ctx.fillText(b.p?'HERO':'ROBOT',b.x,b.y+4)})}
+function lp(){up();dr();requestAnimationFrame(lp)}
+const keys={};document.addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);document.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+async function tog(){const b=document.getElementById('rec');if(!rec){try{mr=new MediaRecorder(cv.captureStream(30),{mimeType:'video/webm'});ch=[];mr.ondataavailable=e=>{if(e.data.size)ch.push(e.data)};mr.onstop=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(ch,{type:'video/webm'}));a.download='hero.webm';a.click()};mr.start();rec=true;b.textContent='⏹️'}catch(e){alert('Chrome')}}else{mr.stop();rec=false;b.textContent='🔴 Record'}}
+init();lp();
+</script></body></html>
