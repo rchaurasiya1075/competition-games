@@ -3,82 +3,72 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Neon Ball Battle - Full Features</title>
+<title>Neon Ball Battle - Auto + Physics</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    background: #0a0a12;
-    color: #fff;
-    font-family: Arial, sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-height: 100vh;
-    overflow: hidden;
-    touch-action: none;
+    background: #0a0a12; color: #fff; font-family: Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+    overflow: hidden; touch-action: none;
   }
   h1 {
-    margin: 6px 0;
-    background: linear-gradient(90deg, #ff00ff, #00ffff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    font-size: 22px;
+    margin: 6px 0; background: linear-gradient(90deg, #ff00ff, #00ffff);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 22px;
   }
   #setup, #gameArea { width: 100%; display: flex; flex-direction: column; align-items: center; }
-  #setup { padding: 15px; }
-  .setup-row { margin: 8px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
-  input, select { padding: 8px 12px; border-radius: 10px; background: #222; color: #fff; border: 1px solid #555; font-size: 14px; }
-  #info {
-    display: flex; gap: 10px; margin: 4px; font-size: 13px; flex-wrap: wrap; justify-content: center; text-align: center;
-  }
+  #setup { padding: 12px; }
+  .setup-row { margin: 6px 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  input, select { padding: 7px 10px; border-radius: 8px; background: #222; color: #fff; border: 1px solid #555; font-size: 13px; }
+  #info { display: flex; gap: 8px; margin: 4px; font-size: 13px; flex-wrap: wrap; justify-content: center; }
   #levelInfo { color: #ffff00; font-weight: bold; }
   canvas {
-    border: 3px solid #444; border-radius: 10px; box-shadow: 0 0 20px #ff00ff;
+    border: 3px solid #444; border-radius: 10px; box-shadow: 0 0 25px #ff00ff;
     background: radial-gradient(circle, #1a1a2e, #0a0a12); max-width: 100%; touch-action: none;
   }
-  .controls { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
+  .controls { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; align-items: center; }
   button {
-    padding: 8px 16px; font-size: 14px; background: linear-gradient(45deg, #ff00ff, #00ffff);
-    border: none; border-radius: 18px; color: #000; font-weight: bold; cursor: pointer;
+    padding: 7px 14px; font-size: 13px; background: linear-gradient(45deg, #ff00ff, #00ffff);
+    border: none; border-radius: 16px; color: #000; font-weight: bold; cursor: pointer;
   }
   #recordBtn { background: #ff3333; color: #fff; }
   #musicBtn { background: #33aa55; color: #fff; }
+  #autoBtn { background: #aa55ff; color: #fff; }
   #winScreen, #levelScreen {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.93);
     flex-direction: column; align-items: center; justify-content: center; z-index: 10; text-align: center; padding: 20px;
   }
-  #winScreen h2, #levelScreen h2 { font-size: 30px; margin-bottom: 12px; }
+  #winScreen h2, #levelScreen h2 { font-size: 28px; margin-bottom: 10px; }
 </style>
 </head>
 <body>
 <h1>⚡ Neon Ball Battle ⚡</h1>
-
 <div id="setup">
   <div class="setup-row">
-    <label>Name 1: <input id="name1" value="YOU" maxlength="12"></label>
-    <label>Color 1: <input type="color" id="color1" value="#ff00ff"></label>
+    <label>Name 1: <input id="name1" value="Pink" maxlength="10"></label>
+    <label>Color: <input type="color" id="color1" value="#ff00ff"></label>
   </div>
   <div class="setup-row">
-    <label>Name 2: <input id="name2" value="AI" maxlength="12"></label>
-    <label>Color 2: <input type="color" id="color2" value="#00ffff"></label>
+    <label>Name 2: <input id="name2" value="Cyan" maxlength="10"></label>
+    <label>Color: <input type="color" id="color2" value="#00ffff"></label>
   </div>
   <div class="setup-row">
-    <button onclick="startGame()">Start Battle</button>
+    <label><input type="checkbox" id="autoMode" checked> Full Auto (best for recording)</label>
+    <button onclick="startGame()">Start</button>
   </div>
 </div>
-
 <div id="gameArea" style="display:none;">
   <div id="info">
-    <div id="levelInfo">Level 1 / 10 | Target: 80</div>
+    <div id="levelInfo">Level 1/10 | Target 80</div>
     <div id="score1Display"></div>
     <div id="score2Display"></div>
-    <div id="timer">Time: 45s</div>
+    <div id="timer">45s</div>
   </div>
   <canvas id="game" width="700" height="420"></canvas>
   <div class="controls">
     <button onclick="restartLevel()">Restart</button>
     <button id="recordBtn" onclick="toggleRecord()">🔴 Record</button>
-    <button id="musicBtn" onclick="toggleMusic()">🎵 Music: OFF</button>
+    <button id="musicBtn" onclick="toggleMusic()">🎵 Music OFF</button>
+    <button id="autoBtn" onclick="toggleAuto()">Auto: ON</button>
     <select id="sizeSelect" onchange="resizeCanvas()">
       <option value="500x300">Small</option>
       <option value="700x420" selected>Medium</option>
@@ -87,202 +77,230 @@
     </select>
   </div>
 </div>
-
 <div id="levelScreen">
   <h2 id="levelText">Level Complete!</h2>
   <p id="levelMsg"></p>
-  <button onclick="nextLevel()">Next Level</button>
+  <button onclick="nextLevel()">Next</button>
   <button onclick="restartLevel()">Retry</button>
 </div>
 <div id="winScreen">
   <h2 id="winText">Game Over</h2>
   <p id="finalMsg"></p>
-  <button onclick="location.reload()">New Game</button>
+  <button onclick="location.reload()">New</button>
 </div>
-
 <script>
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 let W = canvas.width, H = canvas.height;
-
 let player, ai, particles = [], multipliers = [];
 let keys = {};
-let timeLeft = 45;
-let gameOver = false;
-let lastTime = Date.now();
-let level = 1;
-const MAX_LEVEL = 10;
-let targetScore = 80;
-let recording = false;
-let mediaRecorder = null;
-let recordedChunks = [];
-let musicOn = false;
-let audioCtx = null;
-let musicInterval = null;
+let timeLeft = 45, gameOver = false, lastTime = Date.now();
+let level = 1, MAX_LEVEL = 10, targetScore = 80;
+let recording = false, mediaRecorder = null, recordedChunks = [];
+let musicOn = false, audioCtx = null, musicInterval = null;
+let autoMode = true;
 
 function createBall(x, y, color, isPlayer, name) {
-  return { x, y, vx: 0, vy: 0, r: 20, color, isPlayer, name, score: 0 };
+  return { x, y, vx: (Math.random()-0.5)*4, vy: (Math.random()-0.5)*4, r: 20, color, isPlayer, name, score: 0 };
 }
 
-function initAudio() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-}
-
-function playSound(freq, duration, type = 'sine', vol = 0.15) {
+function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+function playSound(freq, dur, type='sine', vol=0.12) {
   if (!audioCtx) return;
-  const o = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  o.type = type;
-  o.frequency.value = freq;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
   g.gain.setValueAtTime(vol, audioCtx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+  g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
   o.connect(g); g.connect(audioCtx.destination);
-  o.start(); o.stop(audioCtx.currentTime + duration);
+  o.start(); o.stop(audioCtx.currentTime + dur);
 }
-
-function playCollision() { playSound(180, 0.12, 'square', 0.12); }
-function playPickup() { playSound(520, 0.15, 'sine', 0.18); playSound(780, 0.1, 'sine', 0.1); }
-function playLevelUp() { playSound(440, 0.2); playSound(660, 0.2); playSound(880, 0.3); }
-function playWin() { playSound(523, 0.3); playSound(659, 0.3); playSound(784, 0.5); }
-function playLose() { playSound(200, 0.4, 'sawtooth', 0.15); }
+function playCollision() { playSound(160 + Math.random()*40, 0.1, 'square', 0.1); }
+function playPickup() { playSound(500, 0.12); playSound(750, 0.08); }
+function playLevelUp() { playSound(440, 0.18); playSound(660, 0.18); playSound(880, 0.25); }
+function playWin() { playSound(523, 0.25); playSound(659, 0.25); playSound(784, 0.4); }
+function playLose() { playSound(180, 0.35, 'sawtooth', 0.12); }
 
 function startMusic() {
   if (musicInterval) clearInterval(musicInterval);
-  const notes = [261, 329, 392, 523, 392, 329];
+  const notes = [261.6, 329.6, 392, 523.3, 392, 329.6];
   let i = 0;
   musicInterval = setInterval(() => {
-    if (musicOn && audioCtx) playSound(notes[i % notes.length], 0.25, 'triangle', 0.06);
+    if (musicOn && audioCtx) playSound(notes[i % notes.length], 0.22, 'triangle', 0.055);
     i++;
-  }, 400);
+  }, 380);
 }
-
 function toggleMusic() {
-  initAudio();
-  musicOn = !musicOn;
-  document.getElementById('musicBtn').textContent = musicOn ? '🎵 Music: ON' : '🎵 Music: OFF';
-  if (musicOn) startMusic();
-  else if (musicInterval) clearInterval(musicInterval);
+  initAudio(); musicOn = !musicOn;
+  document.getElementById('musicBtn').textContent = musicOn ? '🎵 Music ON' : '🎵 Music OFF';
+  if (musicOn) startMusic(); else if (musicInterval) clearInterval(musicInterval);
+}
+function toggleAuto() {
+  autoMode = !autoMode;
+  document.getElementById('autoBtn').textContent = autoMode ? 'Auto: ON' : 'Auto: OFF';
 }
 
 function startGame() {
-  const n1 = document.getElementById('name1').value || 'YOU';
-  const n2 = document.getElementById('name2').value || 'AI';
+  const n1 = document.getElementById('name1').value || 'Pink';
+  const n2 = document.getElementById('name2').value || 'Cyan';
   const c1 = document.getElementById('color1').value;
   const c2 = document.getElementById('color2').value;
+  autoMode = document.getElementById('autoMode').checked;
   document.getElementById('setup').style.display = 'none';
   document.getElementById('gameArea').style.display = 'flex';
-  player = createBall(W*0.25, H/2, c1, true, n1);
-  ai = createBall(W*0.75, H/2, c2, false, n2);
+  document.getElementById('autoBtn').textContent = autoMode ? 'Auto: ON' : 'Auto: OFF';
+  player = createBall(W*0.28, H/2, c1, true, n1);
+  ai = createBall(W*0.72, H/2, c2, false, n2);
   initLevel();
   initAudio();
 }
 
 function initLevel() {
-  const scale = Math.min(W / 700, H / 420);
-  player.x = W*0.25; player.y = H/2; player.vx = 0; player.vy = 0; player.r = 20 * scale; player.score = 0;
-  ai.x = W*0.75; ai.y = H/2; ai.vx = 0; ai.vy = 0; ai.r = 20 * scale; ai.score = 0;
+  const scale = Math.min(W/700, H/420);
+  player.x = W*0.28; player.y = H/2; player.vx = (Math.random()-0.5)*5; player.vy = (Math.random()-0.5)*5;
+  player.r = 20*scale; player.score = 0;
+  ai.x = W*0.72; ai.y = H/2; ai.vx = (Math.random()-0.5)*5; ai.vy = (Math.random()-0.5)*5;
+  ai.r = 20*scale; ai.score = 0;
   particles = []; multipliers = [];
-  timeLeft = Math.max(25, 48 - level * 2);
+  timeLeft = Math.max(22, 46 - level*2);
   gameOver = false;
   document.getElementById('levelScreen').style.display = 'none';
   document.getElementById('winScreen').style.display = 'none';
-  document.getElementById('levelInfo').textContent = `Level ${level}/${MAX_LEVEL} | Target: ${targetScore}`;
-  document.getElementById('timer').textContent = 'Time: ' + timeLeft + 's';
-  updateScoreDisplay();
+  document.getElementById('levelInfo').textContent = `Level ${level}/${MAX_LEVEL} | Target ${targetScore}`;
+  document.getElementById('timer').textContent = timeLeft + 's';
+  updateScore();
   spawnMultiplier();
   lastTime = Date.now();
 }
 
-function updateScoreDisplay() {
+function updateScore() {
   document.getElementById('score1Display').innerHTML = `<span style="color:${player.color}">${player.name}: ${Math.round(player.score)}</span>`;
   document.getElementById('score2Display').innerHTML = `<span style="color:${ai.color}">${ai.name}: ${Math.round(ai.score)}</span>`;
 }
 
 function spawnMultiplier() {
-  if (multipliers.length < 3 && !gameOver) {
+  if (multipliers.length < 4 && !gameOver) {
     multipliers.push({
-      x: 40 + Math.random() * (W - 80),
-      y: 40 + Math.random() * (H - 80),
-      value: Math.random() > 0.45 ? 2 : 3,
-      life: 320
+      x: 50 + Math.random()*(W-100),
+      y: 50 + Math.random()*(H-100),
+      vx: (Math.random()-0.5)*1.2,
+      vy: (Math.random()-0.5)*1.2,
+      value: Math.random() > 0.5 ? 2 : 3,
+      life: 280 + Math.random()*100
     });
   }
-  if (!gameOver) setTimeout(spawnMultiplier, 2500 + Math.random() * 1200);
+  if (!gameOver) setTimeout(spawnMultiplier, 1800 + Math.random()*1000);
 }
 
-document.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
-document.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+function bounceWall(b) {
+  const bounce = 0.82;
+  let bounced = false;
+  if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx) * bounce; bounced = true; }
+  if (b.x + b.r > W) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * bounce; bounced = true; }
+  if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy) * bounce; bounced = true; }
+  if (b.y + b.r > H) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * bounce; bounced = true; }
+  if (bounced) {
+    b.vx += (Math.random()-0.5)*0.8;
+    b.vy += (Math.random()-0.5)*0.8;
+    playSound(120 + Math.random()*60, 0.06, 'sine', 0.05);
+  }
+}
+
+function aiThink(ball, other) {
+  if (multipliers.length > 0 && Math.random() < 0.7) {
+    let nearest = multipliers.reduce((a,b) => Math.hypot(a.x-ball.x, a.y-ball.y) < Math.hypot(b.x-ball.x, b.y-ball.y) ? a : b);
+    const ang = Math.atan2(nearest.y - ball.y, nearest.x - ball.x);
+    ball.vx += Math.cos(ang) * (0.28 + level*0.01);
+    ball.vy += Math.sin(ang) * (0.28 + level*0.01);
+  } else if (Math.random() < 0.15) {
+    const ang = Math.atan2(other.y - ball.y, other.x - ball.x);
+    ball.vx += Math.cos(ang) * 0.2;
+    ball.vy += Math.sin(ang) * 0.2;
+  } else {
+    ball.vx += (Math.random()-0.5)*1.2;
+    ball.vy += (Math.random()-0.5)*1.2;
+  }
+}
 
 function update() {
   if (gameOver || !player) return;
   const now = Date.now();
   if (now - lastTime > 1000) {
     timeLeft--; lastTime = now;
-    document.getElementById('timer').textContent = 'Time: ' + timeLeft + 's';
+    document.getElementById('timer').textContent = timeLeft + 's';
     if (timeLeft <= 0) checkEnd();
   }
 
-  const acc = 0.42;
-  if (keys['arrowleft'] || keys['a']) player.vx -= acc;
-  if (keys['arrowright'] || keys['d']) player.vx += acc;
-  if (keys['arrowup'] || keys['w']) player.vy -= acc;
-  if (keys['arrowdown'] || keys['s']) player.vy += acc;
-
-  player.vx *= 0.95; player.vy *= 0.95;
-  ai.vx *= 0.96; ai.vy *= 0.96;
-
-  if (multipliers.length > 0) {
-    let nearest = multipliers.reduce((a,b) => Math.hypot(a.x-ai.x,a.y-ai.y) < Math.hypot(b.x-ai.x,b.y-ai.y) ? a : b);
-    const ang = Math.atan2(nearest.y - ai.y, nearest.x - ai.x);
-    ai.vx += Math.cos(ang) * (0.25 + level*0.015);
-    ai.vy += Math.sin(ang) * (0.25 + level*0.015);
-  } else if (Math.random() < 0.04) {
-    ai.vx += (Math.random()-0.5)*2; ai.vy += (Math.random()-0.5)*2;
+  if (!autoMode) {
+    const acc = 0.45;
+    if (keys['arrowleft'] || keys['a']) player.vx -= acc;
+    if (keys['arrowright'] || keys['d']) player.vx += acc;
+    if (keys['arrowup'] || keys['w']) player.vy -= acc;
+    if (keys['arrowdown'] || keys['s']) player.vy += acc;
+  } else {
+    aiThink(player, ai);
   }
+  aiThink(ai, player);
 
   [player, ai].forEach(b => {
+    b.vx *= 0.97; b.vy *= 0.97;
     const spd = Math.hypot(b.vx, b.vy);
-    if (spd > 8.5) { b.vx *= 8.5/spd; b.vy *= 8.5/spd; }
+    if (spd > 9) { b.vx *= 9/spd; b.vy *= 9/spd; }
     b.x += b.vx; b.y += b.vy;
-    if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx)*0.75; }
-    if (b.x + b.r > W) { b.x = W - b.r; b.vx = -Math.abs(b.vx)*0.75; }
-    if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy)*0.75; }
-    if (b.y + b.r > H) { b.y = H - b.r; b.vy = -Math.abs(b.vy)*0.75; }
+    bounceWall(b);
   });
 
   const dx = ai.x - player.x, dy = ai.y - player.y;
   const dist = Math.hypot(dx, dy);
   if (dist < player.r + ai.r && dist > 0) {
-    const overlap = (player.r + ai.r - dist) / 2;
+    const overlap = (player.r + ai.r - dist) * 0.55;
     const nx = dx/dist, ny = dy/dist;
     player.x -= nx*overlap; ai.x += nx*overlap;
     const relVx = player.vx - ai.vx, relVy = player.vy - ai.vy;
     const sep = relVx*nx + relVy*ny;
     if (sep < 0) {
-      player.vx -= sep*nx*0.7; player.vy -= sep*ny*0.7;
-      ai.vx += sep*nx*0.7; ai.vy += sep*ny*0.7;
+      const impulse = sep * 0.75;
+      player.vx -= impulse * nx; player.vy -= impulse * ny;
+      ai.vx += impulse * nx; ai.vy += impulse * ny;
     }
-    player.score += 5 + level; ai.score += 4 + level;
+    player.score += 6 + level; ai.score += 6 + level;
     playCollision();
-    for (let i = 0; i < 6; i++) particles.push({ x:(player.x+ai.x)/2, y:(player.y+ai.y)/2, vx:(Math.random()-0.5)*7, vy:(Math.random()-0.5)*7, life:18, color: Math.random()>0.5?player.color:ai.color });
+    for (let i = 0; i < 8; i++) {
+      particles.push({
+        x: (player.x+ai.x)/2, y: (player.y+ai.y)/2,
+        vx: (Math.random()-0.5)*9, vy: (Math.random()-0.5)*9,
+        life: 20, color: Math.random()>0.5 ? player.color : ai.color
+      });
+    }
   }
 
   multipliers = multipliers.filter(m => {
+    m.x += m.vx; m.y += m.vy;
     m.life--;
+    if (m.x < 30 || m.x > W-30) m.vx *= -1;
+    if (m.y < 30 || m.y > H-30) m.vy *= -1;
     [player, ai].forEach(ball => {
-      if (Math.hypot(ball.x - m.x, ball.y - m.y) < ball.r + 15) {
-        ball.score += m.value * (15 + level*2);
+      if (Math.hypot(ball.x - m.x, ball.y - m.y) < ball.r + 14) {
+        ball.score += m.value * (18 + level*2);
         m.life = 0;
         playPickup();
-        for (let i = 0; i < 10; i++) particles.push({ x:m.x, y:m.y, vx:(Math.random()-0.5)*10, vy:(Math.random()-0.5)*10, life:22, color:'#ffff00' });
+        for (let i = 0; i < 12; i++) particles.push({
+          x: m.x, y: m.y, vx: (Math.random()-0.5)*11, vy: (Math.random()-0.5)*11, life: 24, color: '#ffff00'
+        });
       }
     });
     return m.life > 0;
   });
 
-  particles = particles.filter(p => { p.x+=p.vx; p.y+=p.vy; p.life--; p.vx*=0.94; p.vy*=0.94; return p.life>0; });
+  particles = particles.filter(p => {
+    p.x += p.vx; p.y += p.vy; p.life--;
+    p.vx *= 0.95; p.vy *= 0.95;
+    return p.life > 0;
+  });
 
-  updateScoreDisplay();
+  updateScore();
   if (player.score >= targetScore) completeLevel();
 }
 
@@ -290,83 +308,72 @@ function completeLevel() {
   gameOver = true;
   playLevelUp();
   if (level >= MAX_LEVEL) {
-    document.getElementById('winText').textContent = 'YOU WIN THE BATTLE! 🏆';
-    document.getElementById('finalMsg').textContent = `${player.name} completed all ${MAX_LEVEL} levels!`;
+    document.getElementById('winText').textContent = 'FULL CLEAR! 🏆';
+    document.getElementById('finalMsg').textContent = `${player.name} finished all levels!`;
     document.getElementById('winScreen').style.display = 'flex';
     playWin();
   } else {
-    document.getElementById('levelText').textContent = `Level ${level} Complete! 🎉`;
-    document.getElementById('levelMsg').textContent = `${player.name} reached ${Math.round(player.score)} points!`;
+    document.getElementById('levelText').textContent = `Level ${level} Done! 🎉`;
+    document.getElementById('levelMsg').textContent = `${player.name}: ${Math.round(player.score)} pts`;
     document.getElementById('levelScreen').style.display = 'flex';
   }
 }
-
 function checkEnd() {
   if (player.score >= targetScore) completeLevel();
   else {
-    gameOver = true;
-    playLose();
-    document.getElementById('winText').textContent = 'Time Up!';
+    gameOver = true; playLose();
+    document.getElementById('winText').textContent = 'Time Up';
     document.getElementById('finalMsg').textContent = `${player.name}: ${Math.round(player.score)} / ${targetScore}`;
     document.getElementById('winScreen').style.display = 'flex';
   }
 }
-
 function nextLevel() {
-  if (level < MAX_LEVEL) {
-    level++;
-    targetScore = Math.round(targetScore * 1.55 + 25);
-    initLevel();
-  }
+  if (level < MAX_LEVEL) { level++; targetScore = Math.round(targetScore * 1.5 + 30); initLevel(); }
 }
-
 function restartLevel() { initLevel(); }
 
 function draw() {
   if (!player) return;
-  ctx.fillStyle = 'rgba(10,10,18,0.35)';
+  ctx.fillStyle = 'rgba(10,10,18,0.32)';
   ctx.fillRect(0, 0, W, H);
   multipliers.forEach(m => {
     ctx.save();
-    ctx.font = 'bold 22px Arial';
+    ctx.font = 'bold 20px Arial';
     ctx.fillStyle = '#ffff00';
-    ctx.shadowBlur = 12; ctx.shadowColor = '#ffff00';
+    ctx.shadowBlur = 14; ctx.shadowColor = '#ffff00';
     ctx.textAlign = 'center';
-    ctx.fillText(m.value + 'x', m.x, m.y);
+    ctx.fillText(m.value + 'x', m.x, m.y + 6);
     ctx.restore();
   });
   particles.forEach(p => {
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 2.5, 0, Math.PI*2);
+    ctx.arc(p.x, p.y, 2.8, 0, Math.PI*2);
     ctx.fillStyle = p.color;
-    ctx.globalAlpha = p.life / 18;
+    ctx.globalAlpha = Math.max(0, p.life / 20);
     ctx.fill();
     ctx.globalAlpha = 1;
   });
   [player, ai].forEach(b => {
     ctx.save();
-    ctx.shadowBlur = 18; ctx.shadowColor = b.color;
-    const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
-    grad.addColorStop(0, '#ffffff');
-    grad.addColorStop(0.4, b.color);
-    grad.addColorStop(1, b.color + '00');
-    ctx.fillStyle = grad;
+    ctx.shadowBlur = 22; ctx.shadowColor = b.color;
+    const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+    g.addColorStop(0, '#fff');
+    g.addColorStop(0.35, b.color);
+    g.addColorStop(1, b.color + '00');
+    ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fill();
     ctx.restore();
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 11px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(b.name, b.x, b.y + 3);
+    ctx.fillText(b.name, b.x, b.y + 4);
   });
 }
-
 function loop() { update(); draw(); requestAnimationFrame(loop); }
 
 function resizeCanvas() {
-  const val = document.getElementById('sizeSelect').value;
-  const [w, h] = val.split('x').map(Number);
-  canvas.width = w; canvas.height = h;
-  W = w; H = h;
+  const [w, h] = document.getElementById('sizeSelect').value.split('x').map(Number);
+  canvas.width = w; canvas.height = h; W = w; H = h;
   if (player) initLevel();
 }
 
@@ -377,23 +384,19 @@ async function toggleRecord() {
       const stream = canvas.captureStream(30);
       mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
       recordedChunks = [];
-      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+      mediaRecorder.ondataavailable = e => { if (e.data.size) recordedChunks.push(e.data); };
       mediaRecorder.onstop = () => {
         const blob = new Blob(recordedChunks, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = `ball_battle_L${level}.webm`;
+        a.href = URL.createObjectURL(blob);
+        a.download = `ball_auto_L${level}.webm`;
         a.click();
-        URL.revokeObjectURL(url);
       };
       mediaRecorder.start();
       recording = true;
       btn.textContent = '⏹️ Stop & Save';
       btn.style.background = '#ffaa00';
-    } catch (err) {
-      alert('Recording works best in Chrome (Android).');
-    }
+    } catch(e) { alert('Use Chrome on Android for recording'); }
   } else {
     mediaRecorder.stop();
     recording = false;
@@ -402,16 +405,15 @@ async function toggleRecord() {
   }
 }
 
-canvas.addEventListener('pointerdown', (e) => {
-  if (!player) return;
+canvas.addEventListener('pointerdown', e => {
+  if (!player || autoMode) return;
   const rect = canvas.getBoundingClientRect();
   const mx = (e.clientX - rect.left) * (W / rect.width);
   const my = (e.clientY - rect.top) * (H / rect.height);
   const d = Math.hypot(player.x - mx, player.y - my);
-  if (d < 180) {
-    const force = 3.8;
-    player.vx += (player.x - mx) / d * force;
-    player.vy += (player.y - my) / d * force;
+  if (d < 200) {
+    player.vx += (player.x - mx)/d * 4;
+    player.vy += (player.y - my)/d * 4;
   }
 });
 
