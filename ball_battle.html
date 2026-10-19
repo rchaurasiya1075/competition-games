@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Neon Ball Battle - Playable</title>
+<title>Neon Ball Battle - Levels + Recording</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -18,23 +18,24 @@
     touch-action: none;
   }
   h1 {
-    margin: 8px 0;
+    margin: 6px 0;
     background: linear-gradient(90deg, #ff00ff, #00ffff);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    font-size: 24px;
+    font-size: 22px;
   }
   #info {
     display: flex;
-    gap: 20px;
-    margin: 6px;
-    font-size: 16px;
+    gap: 12px;
+    margin: 4px;
+    font-size: 14px;
     flex-wrap: wrap;
     justify-content: center;
+    text-align: center;
   }
   .you { color: #ff55ff; }
   .ai { color: #55ffff; }
-  #timer { color: #ffff00; font-weight: bold; }
+  #levelInfo { color: #ffff00; font-weight: bold; }
   canvas {
     border: 3px solid #444;
     border-radius: 10px;
@@ -44,51 +45,70 @@
     touch-action: none;
   }
   .controls {
-    margin-top: 10px;
+    margin-top: 8px;
     display: flex;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
+    align-items: center;
   }
   button {
-    padding: 10px 20px;
-    font-size: 16px;
+    padding: 8px 16px;
+    font-size: 14px;
     background: linear-gradient(45deg, #ff00ff, #00ffff);
     border: none;
-    border-radius: 20px;
+    border-radius: 18px;
     color: #000;
     font-weight: bold;
     cursor: pointer;
   }
-  #winScreen {
+  #recordBtn { background: #ff3333; color: #fff; }
+  #winScreen, #levelScreen {
     display: none;
     position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.85);
+    inset: 0;
+    background: rgba(0,0,0,0.9);
     flex-direction: column;
     align-items: center;
     justify-content: center;
     z-index: 10;
+    text-align: center;
+    padding: 20px;
   }
-  #winScreen h2 { font-size: 36px; margin-bottom: 20px; }
+  #winScreen h2, #levelScreen h2 { font-size: 32px; margin-bottom: 15px; }
+  select { padding: 6px 10px; border-radius: 10px; background: #222; color: #fff; border: 1px solid #555; }
 </style>
 </head>
 <body>
 <h1>⚡ Neon Ball Battle ⚡</h1>
 <div id="info">
-  <div class="you">YOU (Pink): <span id="scoreYou">0</span> | Size: <span id="sizeYou">22</span></div>
-  <div class="ai">AI (Cyan): <span id="scoreAi">0</span> | Size: <span id="sizeAi">22</span></div>
-  <div id="timer">Time: 60s</div>
+  <div id="levelInfo">Level 1 | Target: 80 pts</div>
+  <div class="you">YOU: <span id="scoreYou">0</span></div>
+  <div class="ai">AI: <span id="scoreAi">0</span></div>
+  <div id="timer">Time: 45s</div>
 </div>
-<canvas id="game" width="800" height="500"></canvas>
+<canvas id="game" width="700" height="420"></canvas>
 <div class="controls">
-  <button onclick="restart()">Restart</button>
-  <div style="font-size:14px; opacity:0.8;">Arrow Keys / WASD to move | Click/Touch to boost</div>
+  <button onclick="restartLevel()">Restart Level</button>
+  <button id="recordBtn" onclick="toggleRecord()">🔴 Record</button>
+  <select id="sizeSelect" onchange="resizeCanvas()">
+    <option value="500x300">Small (500x300)</option>
+    <option value="700x420" selected>Medium (700x420)</option>
+    <option value="900x540">Large (900x540)</option>
+    <option value="1200x700">XL (1200x700)</option>
+  </select>
+  <span style="font-size:12px; opacity:0.8;">Arrows/WASD | Touch boost</span>
 </div>
 
+<div id="levelScreen">
+  <h2 id="levelText">Level Complete!</h2>
+  <p id="levelMsg">Points reached!</p>
+  <button onclick="nextLevel()">Next Level</button>
+  <button onclick="restartLevel()">Retry</button>
+</div>
 <div id="winScreen">
-  <h2 id="winText"></h2>
-  <button onclick="restart()">Play Again</button>
+  <h2 id="winText">Game Over</h2>
+  <button onclick="restartLevel()">Try Again</button>
 </div>
 
 <script>
@@ -98,29 +118,33 @@ let W = canvas.width, H = canvas.height;
 
 let player, ai, particles = [], multipliers = [];
 let keys = {};
-let timeLeft = 60;
+let timeLeft = 45;
 let gameOver = false;
 let lastTime = Date.now();
+let level = 1;
+let targetScore = 80;
+let recording = false;
+let mediaRecorder = null;
+let recordedChunks = [];
 
 function createBall(x, y, color, isPlayer) {
-  return {
-    x, y,
-    vx: 0, vy: 0,
-    r: 22,
-    color,
-    isPlayer,
-    score: 0
-  };
+  return { x, y, vx: 0, vy: 0, r: 20, color, isPlayer, score: 0 };
 }
 
-function init() {
-  player = createBall(200, 250, '#ff00ff', true);
-  ai = createBall(600, 250, '#00ffff', false);
+function initLevel() {
+  const scale = Math.min(W / 700, H / 420);
+  player = createBall(W*0.25, H/2, '#ff00ff', true);
+  ai = createBall(W*0.75, H/2, '#00ffff', false);
+  player.r = 20 * scale;
+  ai.r = 20 * scale;
   particles = [];
   multipliers = [];
-  timeLeft = 60;
+  timeLeft = Math.max(30, 50 - level * 3);
   gameOver = false;
+  document.getElementById('levelScreen').style.display = 'none';
   document.getElementById('winScreen').style.display = 'none';
+  document.getElementById('levelInfo').textContent = `Level ${level} | Target: ${targetScore} pts`;
+  document.getElementById('timer').textContent = 'Time: ' + timeLeft + 's';
   spawnMultiplier();
   lastTime = Date.now();
 }
@@ -128,13 +152,13 @@ function init() {
 function spawnMultiplier() {
   if (multipliers.length < 3 && !gameOver) {
     multipliers.push({
-      x: 60 + Math.random() * (W - 120),
-      y: 60 + Math.random() * (H - 120),
-      value: Math.random() > 0.5 ? 2 : 3,
-      life: 400
+      x: 40 + Math.random() * (W - 80),
+      y: 40 + Math.random() * (H - 80),
+      value: Math.random() > 0.4 ? 2 : 3,
+      life: 350
     });
   }
-  if (!gameOver) setTimeout(spawnMultiplier, 3500 + Math.random() * 2000);
+  if (!gameOver) setTimeout(spawnMultiplier, 2800 + Math.random() * 1500);
 }
 
 document.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
@@ -148,59 +172,41 @@ function update() {
     timeLeft--;
     lastTime = now;
     document.getElementById('timer').textContent = 'Time: ' + timeLeft + 's';
-    if (timeLeft <= 0) endGame();
+    if (timeLeft <= 0) checkEnd();
   }
 
-  // Player controls
-  const acc = 0.35;
+  const acc = 0.4;
   if (keys['arrowleft'] || keys['a']) player.vx -= acc;
   if (keys['arrowright'] || keys['d']) player.vx += acc;
   if (keys['arrowup'] || keys['w']) player.vy -= acc;
   if (keys['arrowdown'] || keys['s']) player.vy += acc;
 
-  // Friction
-  player.vx *= 0.96;
-  player.vy *= 0.96;
-  ai.vx *= 0.97;
-  ai.vy *= 0.97;
+  player.vx *= 0.95;
+  player.vy *= 0.95;
+  ai.vx *= 0.96;
+  ai.vy *= 0.96;
 
-  // AI simple logic: go towards nearest multiplier or random
   if (multipliers.length > 0) {
-    let nearest = multipliers[0];
-    let nd = Math.hypot(nearest.x - ai.x, nearest.y - ai.y);
-    multipliers.forEach(m => {
-      const d = Math.hypot(m.x - ai.x, m.y - ai.y);
-      if (d < nd) { nearest = m; nd = d; }
-    });
+    let nearest = multipliers.reduce((a,b) => Math.hypot(a.x-ai.x,a.y-ai.y) < Math.hypot(b.x-ai.x,b.y-ai.y) ? a : b);
     const ang = Math.atan2(nearest.y - ai.y, nearest.x - ai.x);
-    ai.vx += Math.cos(ang) * 0.25;
-    ai.vy += Math.sin(ang) * 0.25;
-  } else {
-    if (Math.random() < 0.05) {
-      ai.vx += (Math.random() - 0.5) * 2;
-      ai.vy += (Math.random() - 0.5) * 2;
-    }
+    ai.vx += Math.cos(ang) * (0.22 + level*0.02);
+    ai.vy += Math.sin(ang) * (0.22 + level*0.02);
+  } else if (Math.random() < 0.04) {
+    ai.vx += (Math.random() - 0.5) * 2;
+    ai.vy += (Math.random() - 0.5) * 2;
   }
 
-  // Limit speed
   [player, ai].forEach(b => {
     const spd = Math.hypot(b.vx, b.vy);
-    if (spd > 9) { b.vx *= 9/spd; b.vy *= 9/spd; }
-  });
-
-  // Move
-  [player, ai].forEach(b => {
+    if (spd > 8) { b.vx *= 8/spd; b.vy *= 8/spd; }
     b.x += b.vx;
     b.y += b.vy;
-
-    // Bounce walls
-    if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.8; }
-    if (b.x + b.r > W) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.8; }
-    if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.8; }
-    if (b.y + b.r > H) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 0.8; }
+    if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.75; }
+    if (b.x + b.r > W) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.75; }
+    if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.75; }
+    if (b.y + b.r > H) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 0.75; }
   });
 
-  // Collision between balls
   const dx = ai.x - player.x, dy = ai.y - player.y;
   const dist = Math.hypot(dx, dy);
   if (dist < player.r + ai.r && dist > 0) {
@@ -208,44 +214,36 @@ function update() {
     const nx = dx / dist, ny = dy / dist;
     player.x -= nx * overlap;
     ai.x += nx * overlap;
-
-    const relVx = player.vx - ai.vx;
-    const relVy = player.vy - ai.vy;
+    const relVx = player.vx - ai.vx, relVy = player.vy - ai.vy;
     const sep = relVx * nx + relVy * ny;
     if (sep < 0) {
-      player.vx -= sep * nx * 0.8;
-      player.vy -= sep * ny * 0.8;
-      ai.vx += sep * nx * 0.8;
-      ai.vy += sep * ny * 0.8;
+      player.vx -= sep * nx * 0.7;
+      player.vy -= sep * ny * 0.7;
+      ai.vx += sep * nx * 0.7;
+      ai.vy += sep * ny * 0.7;
     }
-
-    player.r = Math.min(player.r + 0.8, 70);
-    ai.r = Math.min(ai.r + 0.8, 70);
-    player.score += 3;
-    ai.score += 3;
-
-    for (let i = 0; i < 8; i++) {
+    player.score += 4 + level;
+    ai.score += 3 + level;
+    for (let i = 0; i < 6; i++) {
       particles.push({
         x: (player.x + ai.x)/2, y: (player.y + ai.y)/2,
-        vx: (Math.random()-0.5)*8, vy: (Math.random()-0.5)*8,
-        life: 25, color: Math.random()>0.5 ? player.color : ai.color
+        vx: (Math.random()-0.5)*7, vy: (Math.random()-0.5)*7,
+        life: 20, color: Math.random()>0.5 ? player.color : ai.color
       });
     }
   }
 
-  // Multipliers
   multipliers = multipliers.filter(m => {
     m.life--;
     [player, ai].forEach(ball => {
-      if (Math.hypot(ball.x - m.x, ball.y - m.y) < ball.r + 18) {
-        ball.r = Math.min(ball.r * m.value, 85);
-        ball.score += m.value * 15;
+      if (Math.hypot(ball.x - m.x, ball.y - m.y) < ball.r + 16) {
+        ball.score += m.value * (12 + level * 2);
         m.life = 0;
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 12; i++) {
           particles.push({
             x: m.x, y: m.y,
-            vx: (Math.random()-0.5)*12, vy: (Math.random()-0.5)*12,
-            life: 30, color: '#ffff00'
+            vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10,
+            life: 25, color: '#ffff00'
           });
         }
       }
@@ -253,89 +251,87 @@ function update() {
     return m.life > 0;
   });
 
-  // Particles
   particles = particles.filter(p => {
     p.x += p.vx; p.y += p.vy;
     p.life--;
-    p.vx *= 0.95; p.vy *= 0.95;
+    p.vx *= 0.94; p.vy *= 0.94;
     return p.life > 0;
   });
 
-  // UI
   document.getElementById('scoreYou').textContent = Math.round(player.score);
   document.getElementById('scoreAi').textContent = Math.round(ai.score);
-  document.getElementById('sizeYou').textContent = Math.round(player.r);
-  document.getElementById('sizeAi').textContent = Math.round(ai.r);
+
+  if (player.score >= targetScore) completeLevel();
 }
 
-function endGame() {
+function completeLevel() {
   gameOver = true;
-  const winScreen = document.getElementById('winScreen');
-  const winText = document.getElementById('winText');
-  if (player.score > ai.score || (player.score === ai.score && player.r > ai.r)) {
-    winText.textContent = 'YOU WIN! 🎉';
-    winText.style.color = '#ff55ff';
-  } else if (ai.score > player.score) {
-    winText.textContent = 'AI Wins 😢';
-    winText.style.color = '#55ffff';
+  document.getElementById('levelText').textContent = 'Level ' + level + ' Complete! 🎉';
+  document.getElementById('levelMsg').textContent = 'You reached ' + Math.round(player.score) + ' points!';
+  document.getElementById('levelScreen').style.display = 'flex';
+}
+
+function checkEnd() {
+  if (player.score >= targetScore) {
+    completeLevel();
   } else {
-    winText.textContent = 'Draw!';
-    winText.style.color = '#ffff00';
+    gameOver = true;
+    document.getElementById('winText').textContent = 'Time Up! You: ' + Math.round(player.score) + ' / ' + targetScore;
+    document.getElementById('winScreen').style.display = 'flex';
   }
-  winScreen.style.display = 'flex';
+}
+
+function nextLevel() {
+  level++;
+  targetScore = Math.round(targetScore * 1.6 + 20);
+  initLevel();
+}
+
+function restartLevel() {
+  initLevel();
 }
 
 function draw() {
-  ctx.fillStyle = 'rgba(10,10,18,0.3)';
+  ctx.fillStyle = 'rgba(10,10,18,0.35)';
   ctx.fillRect(0, 0, W, H);
 
-  // Multipliers
   multipliers.forEach(m => {
     ctx.save();
-    ctx.font = 'bold 26px Arial';
+    ctx.font = 'bold 24px Arial';
     ctx.fillStyle = '#ffff00';
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = 12;
     ctx.shadowColor = '#ffff00';
     ctx.textAlign = 'center';
     ctx.fillText(m.value + 'x', m.x, m.y);
     ctx.restore();
   });
 
-  // Particles
   particles.forEach(p => {
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+    ctx.arc(p.x, p.y, 2.5, 0, Math.PI*2);
     ctx.fillStyle = p.color;
-    ctx.globalAlpha = p.life / 25;
+    ctx.globalAlpha = p.life / 20;
     ctx.fill();
     ctx.globalAlpha = 1;
   });
 
-  // Balls
   [player, ai].forEach(b => {
     ctx.save();
-    ctx.shadowBlur = 25;
+    ctx.shadowBlur = 20;
     ctx.shadowColor = b.color;
     const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
     grad.addColorStop(0, '#ffffff');
-    grad.addColorStop(0.35, b.color);
+    grad.addColorStop(0.4, b.color);
     grad.addColorStop(1, b.color + '00');
     ctx.fillStyle = grad;
     ctx.beginPath();
     ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
     ctx.fill();
     ctx.restore();
-
-    ctx.beginPath();
-    ctx.arc(b.x - b.r*0.3, b.y - b.r*0.3, b.r*0.25, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.fill();
-
-    // Label
     ctx.fillStyle = '#fff';
-    ctx.font = '12px Arial';
+    ctx.font = 'bold 11px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(b.isPlayer ? 'YOU' : 'AI', b.x, b.y + 4);
+    ctx.fillText(b.isPlayer ? 'YOU' : 'AI', b.x, b.y + 3);
   });
 }
 
@@ -345,24 +341,60 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-function restart() {
-  init();
+function resizeCanvas() {
+  const val = document.getElementById('sizeSelect').value;
+  const [w, h] = val.split('x').map(Number);
+  canvas.width = w;
+  canvas.height = h;
+  W = w; H = h;
+  initLevel();
 }
 
-// Touch / click boost
+async function toggleRecord() {
+  const btn = document.getElementById('recordBtn');
+  if (!recording) {
+    try {
+      const stream = canvas.captureStream(30);
+      mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+      recordedChunks = [];
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'ball_battle_level' + level + '.webm';
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+      mediaRecorder.start();
+      recording = true;
+      btn.textContent = '⏹️ Stop & Save';
+      btn.style.background = '#ffaa00';
+    } catch (err) {
+      alert('Recording not supported on this browser. Try Chrome/Android.');
+    }
+  } else {
+    mediaRecorder.stop();
+    recording = false;
+    btn.textContent = '🔴 Record';
+    btn.style.background = '#ff3333';
+  }
+}
+
 canvas.addEventListener('pointerdown', (e) => {
   const rect = canvas.getBoundingClientRect();
   const mx = (e.clientX - rect.left) * (W / rect.width);
   const my = (e.clientY - rect.top) * (H / rect.height);
   const d = Math.hypot(player.x - mx, player.y - my);
-  if (d < 200) {
-    const force = 4;
+  if (d < 180) {
+    const force = 3.5;
     player.vx += (player.x - mx) / d * force;
     player.vy += (player.y - my) / d * force;
   }
 });
 
-init();
+initLevel();
 loop();
 </script>
 </body>
