@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Missile Mayhem - Competition Game</title>
+<style>
+  body { margin:0; background:#050510; color:#fff; font-family:Arial; display:flex; flex-direction:column; align-items:center; }
+  h1 { margin:10px; color:#ff3300; text-shadow:0 0 15px #ff3300; }
+  #info { display:flex; gap:40px; margin:8px; }
+  canvas { border:3px solid #ff3300; border-radius:8px; box-shadow:0 0 20px #ff3300; background:#0a0a1a; }
+  button { margin:12px; padding:10px 25px; background:#ff3300; border:none; border-radius:20px; color:#fff; font-weight:bold; cursor:pointer; }
+</style>
+</head>
+<body>
+<h1>🚀 Missile Mayhem 🚀</h1>
+<div id="info">
+  <div style="color:#ff5555">Red Missile: <span id="s1">0</span> | Boost: <span id="b1">1x</span></div>
+  <div style="color:#55aaff">Blue Missile: <span id="s2">0</span> | Boost: <span id="b2">1x</span></div>
+</div>
+<canvas id="c" width="800" height="500"></canvas>
+<button onclick="restart()">Restart Duel</button>
+
+<script>
+const c = document.getElementById('c'), ctx = c.getContext('2d');
+const W=800, H=500;
+let missiles = [], flames = [], mults = [];
+
+function makeMissile(x,y,col,ang) {
+  return {x,y, vx:Math.cos(ang)*5, vy:Math.sin(ang)*5, col, score:0, boost:1, ang, trail:[]};
+}
+
+function init() {
+  missiles = [
+    makeMissile(180,150,'#ff3333',0.3),
+    makeMissile(620,350,'#3399ff',3.5)
+  ];
+  flames=[]; mults=[];
+  setTimeout(addMult, 3000);
+}
+
+function addMult() {
+  mults.push({x:100+Math.random()*(W-200), y:100+Math.random()*(H-200), v:Math.random()>0.5?2:3, t:200});
+  setTimeout(addMult, 4500);
+}
+
+function update() {
+  missiles.forEach(m => {
+    m.x += m.vx * m.boost;
+    m.y += m.vy * m.boost;
+    m.ang = Math.atan2(m.vy, m.vx);
+    m.trail.push({x:m.x, y:m.y});
+    if (m.trail.length > 15) m.trail.shift();
+
+    // Walls bounce + score
+    if (m.x < 30) { m.x=30; m.vx=Math.abs(m.vx); m.score+=3; }
+    if (m.x > W-30) { m.x=W-30; m.vx=-Math.abs(m.vx); m.score+=3; }
+    if (m.y < 30) { m.y=30; m.vy=Math.abs(m.vy); m.score+=3; }
+    if (m.y > H-30) { m.y=H-30; m.vy=-Math.abs(m.vy); m.score+=3; }
+
+    // Random turn
+    if (Math.random()<0.03) {
+      const turn = (Math.random()-0.5)*0.4;
+      const spd = Math.hypot(m.vx,m.vy);
+      m.ang += turn;
+      m.vx = Math.cos(m.ang)*spd;
+      m.vy = Math.sin(m.ang)*spd;
+    }
+
+    // Flame particles
+    flames.push({x:m.x - Math.cos(m.ang)*20, y:m.y - Math.sin(m.ang)*20, vx:(Math.random()-0.5)*3 - Math.cos(m.ang)*2, vy:(Math.random()-0.5)*3 - Math.sin(m.ang)*2, life:20, col:m.col});
+  });
+
+  // Collision
+  const a=missiles[0], b=missiles[1];
+  if (Math.hypot(a.x-b.x, a.y-b.y) < 50) {
+    a.vx *= -0.9; b.vx *= -0.9;
+    a.vy *= -0.9; b.vy *= -0.9;
+    a.score += 10; b.score += 10;
+    a.boost = Math.min(a.boost+0.15, 3);
+    b.boost = Math.min(b.boost+0.15, 3);
+    for(let i=0;i<20;i++) flames.push({x:(a.x+b.x)/2, y:(a.y+b.y)/2, vx:(Math.random()-0.5)*15, vy:(Math.random()-0.5)*15, life:30, col:'#ffaa00'});
+  }
+
+  mults = mults.filter(m=>{
+    m.t--;
+    missiles.forEach(ms => {
+      if (Math.hypot(ms.x-m.x, ms.y-m.y)<40) {
+        ms.boost = Math.min(ms.boost * m.v, 4);
+        ms.score += m.v*20;
+        m.t=0;
+      }
+    });
+    return m.t>0;
+  });
+
+  flames = flames.filter(f => { f.x+=f.vx; f.y+=f.vy; f.life--; return f.life>0; });
+
+  document.getElementById('s1').textContent = missiles[0].score;
+  document.getElementById('s2').textContent = missiles[1].score;
+  document.getElementById('b1').textContent = missiles[0].boost.toFixed(1)+'x';
+  document.getElementById('b2').textContent = missiles[1].boost.toFixed(1)+'x';
+}
+
+function drawMissile(m) {
+  ctx.save();
+  ctx.translate(m.x, m.y);
+  ctx.rotate(m.ang);
+  ctx.fillStyle = m.col;
+  ctx.shadowBlur = 20;
+  ctx.shadowColor = m.col;
+  // Body
+  ctx.beginPath();
+  ctx.moveTo(25,0);
+  ctx.lineTo(-15,-8);
+  ctx.lineTo(-15,8);
+  ctx.closePath();
+  ctx.fill();
+  // Fins
+  ctx.fillRect(-15,-12,8,6);
+  ctx.fillRect(-15,6,8,6);
+  ctx.restore();
+
+  // Trail
+  ctx.beginPath();
+  m.trail.forEach((t,i) => {
+    if (i===0) ctx.moveTo(t.x,t.y); else ctx.lineTo(t.x,t.y);
+  });
+  ctx.strokeStyle = m.col;
+  ctx.lineWidth = 3;
+  ctx.globalAlpha = 0.6;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function draw() {
+  ctx.fillStyle = 'rgba(5,5,16,0.2)';
+  ctx.fillRect(0,0,W,H);
+
+  mults.forEach(m => {
+    ctx.font = 'bold 30px Arial';
+    ctx.fillStyle = '#ffcc00';
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = '#ff0';
+    ctx.textAlign = 'center';
+    ctx.fillText(m.v+'x', m.x, m.y);
+  });
+
+  flames.forEach(f => {
+    ctx.fillStyle = f.col;
+    ctx.globalAlpha = f.life/20;
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, 3, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+
+  missiles.forEach(drawMissile);
+}
+
+function loop(){ update(); draw(); requestAnimationFrame(loop); }
+function restart(){ init(); }
+
+c.addEventListener('click', e => {
+  const r = c.getBoundingClientRect();
+  const mx = (e.clientX-r.left)*(W/r.width), my = (e.clientY-r.top)*(H/r.height);
+  missiles.forEach(m => {
+    if (Math.hypot(m.x-mx, m.y-my)<120) {
+      const a = Math.atan2(my-m.y, mx-m.x);
+      m.vx += Math.cos(a)*3;
+      m.vy += Math.sin(a)*3;
+    }
+  });
+});
+
+init();
+loop();
+</script>
+</body>
+</html>
