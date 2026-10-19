@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Genuine Ball Battle</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#06060c;color:#fff;font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;overflow:hidden}
+  h1{margin:8px 0;font-size:24px;background:linear-gradient(90deg,#ff55aa,#55ddff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  #setup,#game{width:100%;max-width:920px;display:flex;flex-direction:column;align-items:center;padding:6px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:5px 0;align-items:center}
+  input,select,button{padding:8px 12px;border-radius:10px;border:1px solid #444;background:#181824;color:#fff;font-size:14px}
+  button{background:linear-gradient(45deg,#ff55aa,#55ddff);color:#000;font-weight:bold;border:none;cursor:pointer}
+  canvas{border:3px solid #333;border-radius:12px;background:#0a0a14;max-width:100%;box-shadow:0 0 25px #ff55aa44}
+  #hud{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin:6px;font-weight:bold;font-size:15px}
+  #overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);flex-direction:column;align-items:center;justify-content:center;z-index:10;text-align:center}
+  #overlay h2{font-size:34px;margin-bottom:8px}
+</style>
+</head>
+<body>
+<h1>⚡ Genuine Ball Battle ⚡</h1>
+<div id="setup">
+  <div class="row">
+    <label>Name 1: <input id="n1" value="Team A" maxlength="12"></label>
+    <label>Color: <input type="color" id="c1" value="#ff3366"></label>
+  </div>
+  <div class="row">
+    <label>Name 2: <input id="n2" value="Team B" maxlength="12"></label>
+    <label>Color: <input type="color" id="c2" value="#33aaff"></label>
+  </div>
+  <div class="row">
+    <select id="mode">
+      <option value="fill">Ball Fill — Size Growth (Area)</option>
+      <option value="spawn">Ball Spawn — Quantity</option>
+    </select>
+    <button onclick="start()">Start Auto Match</button>
+  </div>
+  <p style="opacity:.7;font-size:13px;text-align:center;max-width:580px">Automatic. Equal start. Physics-based bounce & movement. 2x 3x 5x 10x multipliers. Clear winner.</p>
+</div>
+<div id="game" style="display:none">
+  <div id="hud">
+    <span id="title"></span>
+    <span id="s1"></span>
+    <span id="s2"></span>
+    <span id="timer">50s</span>
+  </div>
+  <canvas id="c" width="800" height="450"></canvas>
+  <div class="row">
+    <button onclick="restart()">Restart</button>
+    <button onclick="menu()">Menu</button>
+    <button id="rec" onclick="record()">🔴 Record</button>
+    <select id="sz" onchange="resize()">
+      <option value="600x340">Small</option>
+      <option value="800x450" selected>Medium</option>
+      <option value="1000x560">Large</option>
+    </select>
+  </div>
+</div>
+<div id="overlay">
+  <h2 id="ot"></h2>
+  <p id="om"></p>
+  <button onclick="restart()">Again</button>
+  <button onclick="menu()">Menu</button>
+</div>
+<script>
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let W=cv.width,H=cv.height;
+let balls=[],mults=[],parts=[];
+let running=false,time=50,last=0;
+let n1,n2,c1,c2,mode,score1=0,score2=0;
+let rec=false,mr=null,chunks=[];
+
+function start(){
+  n1=document.getElementById('n1').value||'A';
+  n2=document.getElementById('n2').value||'B';
+  c1=document.getElementById('c1').value;
+  c2=document.getElementById('c2').value;
+  mode=document.getElementById('mode').value;
+  document.getElementById('setup').style.display='none';
+  document.getElementById('game').style.display='flex';
+  document.getElementById('title').textContent=mode==='fill'?'BALL FILL':'BALL SPAWN';
+  restart();
+}
+function restart(){
+  running=true;time=50;score1=score2=0;
+  balls=[];mults=[];parts=[];
+  document.getElementById('overlay').style.display='none';
+  balls.push(make(W*0.3,H/2,c1,1,n1));
+  balls.push(make(W*0.7,H/2,c2,2,n2));
+  spawnM();
+  last=performance.now();
+  requestAnimationFrame(loop);
+}
+function make(x,y,col,team,name){
+  const ang=Math.random()*Math.PI*2;
+  const spd=2.2;
+  return {x,y,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,r:20,col,team,name,alive:true};
+}
+function spawnM(){
+  if(!running||mults.length>5)return;
+  const vs=[2,2,3,3,5,5,10];
+  mults.push({x:50+Math.random()*(W-100),y:50+Math.random()*(H-100),v:vs[Math.floor(Math.random()*vs.length)],life:300});
+  setTimeout(spawnM,1600+Math.random()*1000);
+}
+function update(){
+  if(!running)return;
+  const now=performance.now();
+  if(now-last>1000){time--;last=now;document.getElementById('timer').textContent=time+'s';if(time<=0)endTime();}
+
+  balls.forEach(b=>{
+    if(!b.alive)return;
+    let near=null,bd=1e9;
+    mults.forEach(m=>{const d=Math.hypot(m.x-b.x,m.y-b.y);if(d<bd){bd=d;near=m;}});
+    if(near){
+      const ang=Math.atan2(near.y-b.y,near.x-b.x);
+      b.vx+=Math.cos(ang)*0.12;
+      b.vy+=Math.sin(ang)*0.12;
+    }
+    b.x+=b.vx;b.y+=b.vy;
+    if(b.x-b.r<0){b.x=b.r;b.vx=Math.abs(b.vx)*0.92;}
+    if(b.x+b.r>W){b.x=W-b.r;b.vx=-Math.abs(b.vx)*0.92;}
+    if(b.y-b.r<0){b.y=b.r;b.vy=Math.abs(b.vy)*0.92;}
+    if(b.y+b.r>H){b.y=H-b.r;b.vy=-Math.abs(b.vy)*0.92;}
+    const sp=Math.hypot(b.vx,b.vy);
+    if(sp>8){b.vx*=8/sp;b.vy*=8/sp;}
+    if(sp<1.2){b.vx*=1.05;b.vy*=1.05;}
+  });
+
+  for(let i=0;i<balls.length;i++){
+    for(let j=i+1;j<balls.length;j++){
+      const a=balls[i],b=balls[j];
+      if(!a.alive||!b.alive)continue;
+      const dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy);
+      const min=a.r+b.r;
+      if(dist<min&&dist>0){
+        const nx=dx/dist,ny=dy/dist;
+        const ov=(min-dist)/2;
+        a.x-=nx*ov;b.x+=nx*ov;
+        const rvx=a.vx-b.vx,rvy=a.vy-b.vy;
+        const vel=rvx*nx+rvy*ny;
+        if(vel>0)continue;
+        const impulse=-(1.8)*vel/2;
+        a.vx+=impulse*nx;a.vy+=impulse*ny;
+        b.vx-=impulse*nx;b.vy-=impulse*ny;
+        for(let k=0;k<4;k++)parts.push({x:(a.x+b.x)/2,y:(a.y+b.y)/2,vx:(Math.random()-0.5)*6,vy:(Math.random()-0.5)*6,life:15,col:Math.random()>0.5?a.col:b.col});
+      }
+    }
+  }
+
+  mults=mults.filter(m=>{
+    m.life--;
+    balls.forEach(b=>{
+      if(!b.alive)return;
+      if(Math.hypot(b.x-m.x,b.y-m.y)<b.r+16){
+        apply(b,m.v);
+        m.life=0;
+        for(let k=0;k<10;k++)parts.push({x:m.x,y:m.y,vx:(Math.random()-0.5)*9,vy:(Math.random()-0.5)*9,life:22,col:'#ff0'});
+      }
+    });
+    return m.life>0;
+  });
+
+  parts=parts.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.life--;p.vx*=0.96;p.vy*=0.96;return p.life>0;});
+
+  if(mode==='fill'){
+    score1=balls.filter(b=>b.team===1).reduce((s,b)=>s+b.r*b.r,0);
+    score2=balls.filter(b=>b.team===2).reduce((s,b)=>s+b.r*b.r,0);
+    const tgt=(W*H)*0.18;
+    if(score1>=tgt)end(1,'filled the arena first!');
+    if(score2>=tgt)end(2,'filled the arena first!');
+  }else{
+    score1=balls.filter(b=>b.team===1&&b.alive).length;
+    score2=balls.filter(b=>b.team===2&&b.alive).length;
+    if(score1>=9)end(1,'spawned more balls!');
+    if(score2>=9)end(2,'spawned more balls!');
+  }
+  document.getElementById('s1').innerHTML=`<span style="color:${c1}">${n1}: ${Math.round(score1)}</span>`;
+  document.getElementById('s2').innerHTML=`<span style="color:${c2}">${n2}: ${Math.round(score2)}</span>`;
+}
+function apply(b,v){
+  if(mode==='fill'){
+    b.r=Math.min(b.r*(1+v*0.15),100);
+  }else{
+    const cnt=Math.min(v,3);
+    for(let i=0;i<cnt-1;i++){
+      const nb=make(b.x+(Math.random()-0.5)*30,b.y+(Math.random()-0.5)*30,b.col,b.team,b.name);
+      nb.r=Math.max(12,b.r*0.7);
+      balls.push(nb);
+    }
+    b.r=Math.min(b.r+3,45);
+  }
+}
+function endTime(){
+  if(score1>score2)end(1,'higher area/count at time end!');
+  else if(score2>score1)end(2,'higher area/count at time end!');
+  else end(0,'Tie!');
+}
+function end(w,reason){
+  running=false;
+  const ov=document.getElementById('overlay');
+  const ot=document.getElementById('ot');
+  if(w===1){ot.textContent=n1+' WINS!';ot.style.color=c1;}
+  else if(w===2){ot.textContent=n2+' WINS!';ot.style.color=c2;}
+  else{ot.textContent='TIE!';ot.style.color='#ff0';}
+  document.getElementById('om').textContent=reason+' | '+Math.round(score1)+' - '+Math.round(score2);
+  ov.style.display='flex';
+}
+function draw(){
+  ctx.fillStyle='rgba(6,6,12,0.4)';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#333';ctx.lineWidth=4;ctx.strokeRect(2,2,W-4,H-4);
+  mults.forEach(m=>{
+    ctx.save();
+    ctx.font='bold 24px system-ui';
+    ctx.fillStyle=m.v>=5?'#ffee00':'#fff';
+    ctx.shadowBlur=14;ctx.shadowColor='#ff0';
+    ctx.textAlign='center';
+    ctx.fillText(m.v+'x',m.x,m.y);
+    ctx.restore();
+  });
+  parts.forEach(p=>{
+    ctx.globalAlpha=p.life/15;
+    ctx.fillStyle=p.col;
+    ctx.beginPath();ctx.arc(p.x,p.y,2.5,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;
+  });
+  balls.forEach(b=>{
+    if(!b.alive)return;
+    ctx.save();
+    ctx.shadowBlur=18;ctx.shadowColor=b.col;
+    const g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r);
+    g.addColorStop(0,'#fff');g.addColorStop(0.35,b.col);g.addColorStop(1,b.col+'00');
+    ctx.fillStyle=g;
+    ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    ctx.fillStyle='#fff';ctx.font='bold 11px system-ui';ctx.textAlign='center';
+    ctx.fillText(b.name,b.x,b.y+3);
+  });
+}
+function loop(){update();draw();if(running)requestAnimationFrame(loop);}
+function menu(){running=false;document.getElementById('game').style.display='none';document.getElementById('setup').style.display='flex';document.getElementById('overlay').style.display='none';}
+function resize(){
+  const[w,h]=document.getElementById('sz').value.split('x').map(Number);
+  cv.width=w;cv.height=h;W=w;H=h;
+  if(running)restart();
+}
+async function record(){
+  const btn=document.getElementById('rec');
+  if(!rec){
+    try{
+      const s=cv.captureStream(30);
+      mr=new MediaRecorder(s,{mimeType:'video/webm'});
+      chunks=[];
+      mr.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+      mr.onstop=()=>{
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(new Blob(chunks,{type:'video/webm'}));
+        a.download='ball_battle.webm';a.click();
+      };
+      mr.start();rec=true;btn.textContent='⏹️ Stop';
+    }catch(e){alert('Use Chrome for recording');}
+  }else{mr.stop();rec=false;btn.textContent='🔴 Record';}
+}
+</script>
+</body>
+</html>
