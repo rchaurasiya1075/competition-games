@@ -183,10 +183,10 @@ function showHome() {
   wrap.appendChild(hero);
   const kicker = el("p", "kicker", "Do khiladi");
   const title = el("h1", "", "Janata Akhada");
-  const lede = el("p", "lede", "Naam likho, chehra aur kapde chuno. Rassi, kusti, daud — har game ka ek hi winner.");
+  const lede = el("p", "lede", "Naam likho, chehra chuno. Har dangal alag maidan, ek hi winner.");
   const actions = el("div", "stack");
   const two = el("button", "primary", "Do log khelein");
-  const cpu = el("button", "ghost", "Computer se khelo");
+  const cpu = el("button", "ghost", "Dono khud khelen");
   two.onclick = () => {
     unlock();
     S.p2cpu = false;
@@ -306,24 +306,6 @@ function playerCard(index) {
   const player = index === 0 ? S.p1 : S.p2;
   const card = el("section", "panel");
   card.append(el("h2", "", index === 0 ? "Khiladi 1" : "Khiladi 2"));
-  if (index === 1) {
-    const mode = el("div", "row");
-    mode.style.marginTop = "8px";
-    const human = el("button", S.p2cpu ? "chip" : "chip on", "Insaan");
-    const cpu = el("button", S.p2cpu ? "chip on" : "chip", "Computer");
-    human.onclick = () => {
-      S.p2cpu = false;
-      save();
-      showRoster();
-    };
-    cpu.onclick = () => {
-      S.p2cpu = true;
-      save();
-      showRoster();
-    };
-    mode.append(human, cpu);
-    card.appendChild(mode);
-  }
   const nameLabel = el("label", "label", "Naam");
   const name = el("input");
   name.type = "text";
@@ -424,9 +406,9 @@ function showPick() {
   const screen = el("div", "screen pick");
   const wrap = el("div", "wrap");
   wrap.append(el("p", "kicker", LEVELS[S.level - 1]), el("h1", "", "Kaun sa dangal"));
-  wrap.append(el("p", "lede", `${shortName(S.p1.name)} aur ${S.p2cpu ? "Computer" : shortName(S.p2.name)}. Record se video save hoti hai.`));
+  wrap.append(el("p", "lede", `${shortName(S.p1.name)} aur ${shortName(S.p2.name)} khud khelenge.`));
   const series = el("button", "game wide");
-  series.append(el("span", "mark", "POORI SERIES"), el("strong", "", "Das game, ek bajrang"), el("p", "", "Saare game khelo. Jis ke zyada jeet, wahi winner."));
+  series.append(el("span", "mark", "POORI SERIES"), el("strong", "", "Unnis game, ek bajrang"), el("p", "", "Saare game khelo. Jis ke zyada jeet, wahi winner."));
   series.onclick = () => {
     unlock();
     S.series = { ids: GAMES.map((g) => g.id), index: 0, score: [0, 0] };
@@ -531,7 +513,7 @@ function startMatch(id) {
   clearEdges();
   input.held = [false, false];
   input.heldB = [false, false];
-  const names = [S.p1.name.trim() || "Khiladi 1", S.p2cpu ? "Computer" : S.p2.name.trim() || "Khiladi 2"];
+  const names = [S.p1.name.trim() || "Khiladi 1", S.p2.name.trim() || "Khiladi 2"];
   let match;
   try {
     match = createMatch(id, {
@@ -556,56 +538,10 @@ function startMatch(id) {
   bar.append(back, title, pause, recBtn);
   const hud = el("div", "hudline", "");
   const canvas = el("canvas", "stage");
-  const controls = el("div", "controls");
-  if (match.controls === "zones") controls.classList.add("zones");
-  const hint = el(
-    "p",
-    "hint",
-    match.controls === "zones"
-      ? "P1: Z X C. P2: I O P. Dono ek saath chuno."
-      : match.controls === "dual"
-        ? "P1: A aur D. P2: left aur right teer."
-        : "P1: A ya S. P2: left teer ya J.",
-  );
-  screen.append(bar, hud, canvas, hint, controls);
+  const meta = GAMES.find((g) => g.id === id);
+  const hint = el("p", "hint", meta?.line || "");
+  screen.append(bar, hud, canvas, hint);
   root.replaceChildren(screen);
-
-  const verbs = match.verbs || ["Maaro", "Maaro"];
-  if (match.controls === "zones") {
-    const p1row = verbs.map((label, z) => {
-      const b = el("button", "act p1", `${names[0]} ${label}`);
-      bindHold(b, 0, false, z);
-      return b;
-    });
-    const p2row = verbs.map((label, z) => {
-      const b = el("button", "act p2", `${names[1]} ${label}`);
-      if (S.p2cpu) b.disabled = true;
-      bindHold(b, 1, false, z);
-      return b;
-    });
-    p1row.forEach((b) => controls.appendChild(b));
-    p2row.forEach((b) => controls.appendChild(b));
-  } else if (match.controls === "dual") {
-    const labels = [
-      [0, false, verbs[0]],
-      [0, true, verbs[1]],
-      [1, false, verbs[0]],
-      [1, true, verbs[1]],
-    ];
-    labels.forEach(([p, alt, label]) => {
-      const b = el("button", p === 0 ? "act p1" : "act p2", `${names[p]} ${label}`);
-      if (p === 1 && S.p2cpu) b.disabled = true;
-      bindHold(b, p, alt, null);
-      controls.appendChild(b);
-    });
-  } else {
-    [0, 1].forEach((p) => {
-      const b = el("button", p === 0 ? "act p1" : "act p2", `${names[p]} ${verbs[p] || verbs[0]}`);
-      if (p === 1 && S.p2cpu) b.disabled = true;
-      bindHold(b, p, false, null);
-      controls.appendChild(b);
-    });
-  }
 
   const recorder = createRecorder(canvas, audio);
   recBtn.onclick = async () => {
@@ -636,9 +572,9 @@ function startMatch(id) {
 
   const ctx = canvas.getContext("2d");
   let last = 0;
-  let count = 3;
+  let count = 0.45;
   let ended = false;
-  let beepAt = 3;
+  let whistled = false;
 
   const loop = (ts) => {
     raf = requestAnimationFrame(loop);
@@ -686,13 +622,10 @@ function startMatch(id) {
     }
     if (count > 0) {
       count -= dt;
-      const n = Math.ceil(count);
-      if (n > 0 && n < beepAt) {
-        beepAt = n;
-        audio.beep();
+      if (count <= 0 && !whistled) {
+        whistled = true;
+        audio.whistle();
       }
-      if (count <= 0) audio.whistle();
-      textCenter(ctx, count > 0 ? String(Math.ceil(count)) : "", viewW / 2, viewH * 0.4);
       clearEdges();
       return;
     }
