@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Competition Games Collection - Playable</title>
+<title>Competition Games Collection</title>
 <style>
   body {
     margin: 0;
@@ -17,74 +17,83 @@
     padding: 20px;
   }
   h1 {
-    font-size: 36px;
-    margin-bottom: 10px;
+    font-size: 34px;
+    margin-bottom: 8px;
     background: linear-gradient(90deg, #ff00aa, #00ffcc, #ffaa00);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     text-align: center;
   }
-  p { text-align: center; max-width: 720px; opacity: 0.9; margin-bottom: 30px; }
+  .featured {
+    background: rgba(255,255,0,0.12);
+    border: 2px solid #ffff00;
+    border-radius: 16px;
+    padding: 18px;
+    margin: 15px 0;
+    text-align: center;
+    max-width: 600px;
+  }
+  .featured a { color: #ffff00; font-size: 22px; font-weight: bold; text-decoration: none; }
+  .featured p { margin-top: 6px; opacity: 0.9; }
+  p { text-align: center; max-width: 720px; opacity: 0.9; margin-bottom: 20px; }
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 25px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
     width: 100%;
-    max-width: 1100px;
+    max-width: 1000px;
   }
   .card {
     background: rgba(255,255,255,0.08);
-    border-radius: 16px;
-    padding: 20px;
+    border-radius: 14px;
+    padding: 18px;
     text-align: center;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.15);
-    transition: transform 0.3s, box-shadow 0.3s;
     text-decoration: none;
     color: #fff;
+    border: 1px solid rgba(255,255,255,0.12);
+    transition: transform 0.25s;
   }
-  .card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 15px 30px rgba(255,0,170,0.4);
-  }
-  .card h2 { margin: 10px 0; font-size: 22px; }
-  .card p { font-size: 14px; opacity: 0.8; }
-  .emoji { font-size: 48px; margin-bottom: 10px; }
-  footer { margin-top: 40px; opacity: 0.6; font-size: 14px; text-align: center; }
+  .card:hover { transform: translateY(-6px); }
+  .emoji { font-size: 42px; }
+  .card h2 { margin: 8px 0; font-size: 20px; }
+  footer { margin-top: 30px; opacity: 0.6; font-size: 13px; text-align: center; }
 </style>
 </head>
 <body>
 <h1>🔥 Competition Games 🔥</h1>
-<p>Proper playable competition games! Control YOUR entity with Arrow Keys / WASD. AI controls the other. Collect 2x / 3x multipliers, grow bigger, score more. 60 seconds — highest score wins! Click/Touch near your entity to boost.</p>
+
+<div class="featured">
+  <a href="proper_game.html">⚡ PROPER GAME (Recommended) ⚡</a>
+  <p>Levels • Point Target • Win/Loss • Built-in Recording • Size Control (Small/Medium/Large)</p>
+</div>
+
+<p>Other fun versions:</p>
 
 <div class="grid">
   <a class="card" href="ball_battle.html">
     <div class="emoji">⚡</div>
     <h2>Neon Ball Battle</h2>
-    <p>You (Pink) vs AI (Cyan). Move with arrows, grab multipliers, become the biggest!</p>
+    <p>YOU vs AI with timer</p>
   </a>
-
   <a class="card" href="car_clash.html">
     <div class="emoji">🏎️</div>
     <h2>Turbo Car Clash</h2>
-    <p>Drive your Red car with arrows. Steer, accelerate, crash and boost power!</p>
+    <p>Drive & power boost</p>
   </a>
-
   <a class="card" href="missile_mayhem.html">
     <div class="emoji">🚀</div>
     <h2>Missile Mayhem</h2>
-    <p>Steer your Red missile. Thrust with Up/W, collect boosts, outscore the AI!</p>
+    <p>Steer your missile</p>
   </a>
-
   <a class="card" href="hero_clash.html">
     <div class="emoji">🦸</div>
     <h2>Hero vs Villain</h2>
-    <p>Control the Hero with arrows. Grow larger than the Villain in 60 seconds!</p>
+    <p>Grow bigger</p>
   </a>
 </div>
 
 <footer>
-  All games are fully playable HTML5 Canvas • Keyboard + Touch/Click boost • Mobile friendly • YOU vs AI Competition
+  Proper Game has Levels + Target Score + Recording (webm download) + Canvas Size Control for phone reels.
 </footer>
 </body>
 </html>
