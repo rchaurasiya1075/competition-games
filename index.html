@@ -1,106 +1,77 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Neon Arena — Competition Games</title>
+<title>Janata Akhada — Competition Games</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  * { box-sizing: border-box; margin: 0; }
   body {
-    background: #050510;
-    color: #fff;
-    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #141210;
+    color: #f4f1ea;
+    font-family: "Noto Sans Devanagari", "FreeSans", "Nirmala UI", sans-serif;
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 20px 12px;
+    padding: 32px 16px 48px;
   }
+  .wrap { width: min(880px, 100%); margin: 0 auto; }
   h1 {
-    font-size: 32px;
-    margin-bottom: 6px;
-    background: linear-gradient(90deg, #ff00ff, #00ffff, #ffff00);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-align: center;
+    font-size: clamp(2rem, 1.4rem + 2vw, 3rem);
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin: 6px 0 8px;
   }
-  .featured {
-    background: rgba(255,0,255,0.15);
-    border: 2px solid #ff55ff;
-    border-radius: 16px;
-    padding: 16px;
-    margin: 12px 0;
-    text-align: center;
-    max-width: 640px;
+  .kicker { color: #a39e94; letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.78rem; }
+  .lede { color: #a39e94; max-width: 46ch; margin-bottom: 18px; }
+  .feature {
+    display: block;
+    background: #1c1a17;
+    border: 1px solid rgba(244,241,234,0.14);
+    border-radius: 20px;
+    padding: 18px;
+    color: inherit;
+    text-decoration: none;
+    margin-bottom: 22px;
   }
-  .featured a { color: #ff55ff; font-size: 20px; font-weight: bold; text-decoration: none; }
-  .featured p { margin-top: 6px; opacity: 0.9; font-size: 14px; }
-  .subtitle { opacity: 0.75; margin-bottom: 14px; text-align: center; font-size: 14px; }
+  .feature strong { display: block; font-size: 1.25rem; margin: 4px 0; }
+  .feature span { color: #a39e94; }
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 16px;
-    width: 100%;
-    max-width: 960px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
   }
-  .card {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.12);
+  a.card {
+    background: #1c1a17;
+    border: 1px solid rgba(244,241,234,0.12);
     border-radius: 16px;
-    padding: 18px;
-    text-align: center;
+    padding: 14px;
+    color: inherit;
     text-decoration: none;
-    color: #fff;
-    transition: all 0.25s ease;
   }
-  .card:hover { transform: translateY(-6px); border-color: #00ffff; }
-  .emoji { font-size: 40px; margin-bottom: 6px; }
-  .card h2 { font-size: 18px; margin: 6px 0; }
-  .card p { font-size: 13px; opacity: 0.8; }
-  footer { margin-top: 28px; opacity: 0.5; font-size: 12px; text-align: center; }
+  a.card p { color: #a39e94; font-size: 0.9rem; margin-top: 4px; }
+  h2 { font-size: 1rem; font-weight: 600; margin: 8px 0 10px; color: #a39e94; }
 </style>
 </head>
 <body>
-<h1>⚡ Neon Arena ⚡</h1>
-<div class="subtitle">Competition Games · Fully Automated · Recording Ready</div>
-
-<div class="featured">
-  <a href="auto_ball_arena.html">⚡ AUTO BALL ARENA (Recommended) ⚡</a>
-  <p>Fully automatic • Direction only changes on wall bounce • Gentle multiplier chase • Levels • Recording</p>
+<div class="wrap">
+  <p class="kicker">Do khiladi, ek jeet</p>
+  <h1>Janata Akhada</h1>
+  <p class="lede">Naam likho, politician character chuno, skin aur kapde badlo. Rassi khich, kusti, aur dus game. Level, sangeet, aur match recording.</p>
+  <a class="feature" href="akhada/index.html">
+    <span class="kicker">Ab khelo</span>
+    <strong>Janata Akhada kholo</strong>
+    <span>Do log ya computer. Har game ka ek winner. Record se video save hoti hai.</span>
+  </a>
+  <h2>Purane arena</h2>
+  <div class="grid">
+    <a class="card" href="auto_ball_arena.html"><strong>Auto Ball Arena</strong><p>Automatic balls, levels, recording</p></a>
+    <a class="card" href="ball_battle.html"><strong>Neon Ball Battle</strong><p>Playable aur auto mode</p></a>
+    <a class="card" href="ball_genuine.html"><strong>Ball Genuine</strong><p>Seedha ball fight</p></a>
+    <a class="card" href="car_clash.html"><strong>Turbo Car Clash</strong><p>Drive aur crash</p></a>
+    <a class="card" href="missile_mayhem.html"><strong>Missile Mayhem</strong><p>Missile steer</p></a>
+    <a class="card" href="hero_clash.html"><strong>Hero vs Robot</strong><p>Bada hote jao</p></a>
+    <a class="card" href="crystal_race.html"><strong>Crystal Race</strong><p>Crystal ikattha karo</p></a>
+    <a class="card" href="survival.html"><strong>Survival Arena</strong><p>Dushman se bacho</p></a>
+  </div>
 </div>
-
-<div class="grid">
-  <a class="card" href="ball_battle.html">
-    <div class="emoji">⚡</div>
-    <h2>Neon Ball Battle</h2>
-    <p>Playable + Auto mode</p>
-  </a>
-  <a class="card" href="car_clash.html">
-    <div class="emoji">🏎️</div>
-    <h2>Turbo Car Clash</h2>
-    <p>2D drive · crash power loss</p>
-  </a>
-  <a class="card" href="missile_mayhem.html">
-    <div class="emoji">🚀</div>
-    <h2>Missile Mayhem</h2>
-    <p>Steer missiles</p>
-  </a>
-  <a class="card" href="hero_clash.html">
-    <div class="emoji">🦸</div>
-    <h2>Hero vs Robot</h2>
-    <p>Grow bigger</p>
-  </a>
-  <a class="card" href="crystal_race.html">
-    <div class="emoji">💎</div>
-    <h2>Crystal Race</h2>
-    <p>Collect crystals</p>
-  </a>
-  <a class="card" href="survival.html">
-    <div class="emoji">🛡️</div>
-    <h2>Survival Arena</h2>
-    <p>Dodge enemies</p>
-  </a>
-</div>
-<footer>Auto Ball Arena is fully automated — balls bounce only on walls and gently chase multipliers. Perfect for recording.</footer>
 </body>
 </html>
