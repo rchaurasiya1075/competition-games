@@ -3,24 +3,93 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Competition Games</title>
+<title>Neon Arena — Competition Games</title>
 <style>
-body{margin:0;background:linear-gradient(135deg,#0f0c29,#302b63);color:#fff;font-family:system-ui;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
-h1{font-size:36px;background:linear-gradient(90deg,#ff00aa,#00ffcc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;width:100%;max-width:900px;margin-top:20px}
-.card{background:rgba(255,255,255,.08);border-radius:16px;padding:20px;text-align:center;text-decoration:none;color:#fff;border:1px solid rgba(255,255,255,.1);transition:.2s}
-.card:hover{transform:translateY(-5px)}
-.emoji{font-size:48px}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #050510;
+    color: #fff;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 12px;
+  }
+  h1 {
+    font-size: 32px;
+    margin-bottom: 6px;
+    background: linear-gradient(90deg, #ff00ff, #00ffff, #ffff00);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+    text-shadow: 0 0 20px rgba(255,0,255,0.4);
+  }
+  .subtitle { opacity: 0.75; margin-bottom: 18px; text-align: center; font-size: 14px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    width: 100%;
+    max-width: 960px;
+  }
+  .card {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: 18px;
+    text-align: center;
+    text-decoration: none;
+    color: #fff;
+    transition: all 0.25s ease;
+    box-shadow: 0 0 15px rgba(0,255,255,0.1);
+  }
+  .card:hover {
+    transform: translateY(-6px);
+    border-color: #00ffff;
+    box-shadow: 0 0 25px rgba(0,255,255,0.35);
+  }
+  .emoji { font-size: 40px; margin-bottom: 6px; }
+  .card h2 { font-size: 18px; margin: 6px 0; }
+  .card p { font-size: 13px; opacity: 0.8; }
+  footer { margin-top: 28px; opacity: 0.5; font-size: 12px; text-align: center; }
 </style>
 </head>
 <body>
-<h1>🔥 Competition Games 🔥</h1>
-<p style="text-align:center;opacity:.9">Choose a game. All are playable with keyboard. Ball Battle has levels + recording + auto mode.</p>
+<h1>⚡ Neon Arena ⚡</h1>
+<div class="subtitle">Competition Games · 2D Physics · Levels · Recording</div>
 <div class="grid">
-  <a class="card" href="ball_battle.html"><div class="emoji">⚡</div><h2>Neon Ball Battle</h2><p>Levels • Names • Colors • Recording • Auto mode</p></a>
-  <a class="card" href="car_clash.html"><div class="emoji">🏎️</div><h2>Turbo Car Clash</h2><p>Drive cars • Collect power</p></a>
-  <a class="card" href="missile_mayhem.html"><div class="emoji">🚀</div><h2>Missile Mayhem</h2><p>Steer missiles</p></a>
-  <a class="card" href="hero_clash.html"><div class="emoji">🦸</div><h2>Hero Clash</h2><p>Grow bigger</p></a>
+  <a class="card" href="ball_battle.html">
+    <div class="emoji">⚡</div>
+    <h2>Neon Ball Battle</h2>
+    <p>2D wall bounce · multipliers · levels · auto mode</p>
+  </a>
+  <a class="card" href="car_clash.html">
+    <div class="emoji">🏎️</div>
+    <h2>Turbo Car Clash</h2>
+    <p>2D drive · crash power loss · boost</p>
+  </a>
+  <a class="card" href="missile_mayhem.html">
+    <div class="emoji">🚀</div>
+    <h2>Missile Mayhem</h2>
+    <p>Steer missiles · avoid walls · collect</p>
+  </a>
+  <a class="card" href="hero_clash.html">
+    <div class="emoji">🦸</div>
+    <h2>Hero vs Robot</h2>
+    <p>Grow bigger · punch · dodge</p>
+  </a>
+  <a class="card" href="crystal_race.html">
+    <div class="emoji">💎</div>
+    <h2>Crystal Race</h2>
+    <p>Collect crystals · race to score</p>
+  </a>
+  <a class="card" href="survival.html">
+    <div class="emoji">🛡️</div>
+    <h2>Survival Arena</h2>
+    <p>Stay alive · dodge · survive waves</p>
+  </a>
 </div>
+<footer>All games support recording + size resize for reels. Use Chrome on Android for best results.</footer>
 </body>
 </html>
