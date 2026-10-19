@@ -2,69 +2,87 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Turbo Car Clash</title>
 <style>
-body{margin:0;background:#0a0a0a;color:#fff;font-family:system-ui;display:flex;flex-direction:column;align-items:center;min-height:100vh}
-h1{margin:8px;background:linear-gradient(90deg,#ff5500,#ffaa00);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-canvas{border:3px solid #333;border-radius:10px;box-shadow:0 0 20px #ff5500;background:#111;max-width:100%}
-.controls{margin:8px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-button{padding:8px 14px;background:#ff5500;color:#000;border:none;border-radius:20px;font-weight:bold}
-#info{display:flex;gap:15px;margin:6px;font-size:15px}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#050510;color:#fff;font-family:Arial,sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;overflow:hidden;touch-action:none}
+  h1{margin:6px 0;background:linear-gradient(90deg,#ff5500,#ffaa00);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:22px}
+  #info{display:flex;gap:10px;margin:4px;font-size:13px;flex-wrap:wrap;justify-content:center}
+  canvas{border:3px solid #444;border-radius:10px;box-shadow:0 0 20px #ff5500;background:#111;max-width:100%;touch-action:none}
+  .controls{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+  button{padding:7px 14px;font-size:13px;background:linear-gradient(45deg,#ff5500,#ffaa00);border:none;border-radius:16px;color:#000;font-weight:bold;cursor:pointer}
+  #recordBtn{background:#ff3333;color:#fff}
 </style>
 </head>
 <body>
-<h1>🏎️ Turbo Car Clash</h1>
-<div id="info"><span id="you">YOU: 0</span><span id="ai">AI: 0</span><span id="time">Time: 50s</span></div>
-<canvas id="c" width="800" height="480"></canvas>
-<div class="controls"><button onclick="restart()">Restart</button><span>Arrow / WASD to drive | Collect 2x/3x</span></div>
+<h1>🏎️ Turbo Car Clash 🏎️</h1>
+<div id="info"><div>YOU Power: <span id="py">100</span></div><div>AI Power: <span id="pa">100</span></div><div id="timer">40s</div></div>
+<canvas id="g" width="700" height="420"></canvas>
+<div class="controls">
+  <button onclick="init()">Restart</button>
+  <button id="recordBtn" onclick="toggleRec()">🔴 Record</button>
+  <select id="size" onchange="resize()"><option value="500x300">Small</option><option value="700x420" selected>Medium</option><option value="900x540">Large</option></select>
+</div>
 <script>
-const cv=document.getElementById('c'),ctx=cv.getContext('2d');
-let W=cv.width,H=cv.height,you,ai,items=[],parts=[],time=50,over=false,last=Date.now();
-function car(x,y,col,isYou){return{x,y,vx:0,vy:0,angle:0,col,isYou,score:0,power:100}}
+const cv=document.getElementById('g'),ctx=cv.getContext('2d');
+let W=cv.width,H=cv.height,you,ai,time=40,over=false,lt=Date.now(),rec=false,mr=null,chunks=[];
+function car(x,y,c,isP){return{x,y,vx:0,vy:0,ang:0,spd:0,pow:100,c,isP,r:22}}
 function init(){
-  you=car(200,240,'#ff5500',true); ai=car(600,240,'#00aaff',false);
-  items=[];parts=[];time=50;over=false;spawn();last=Date.now();
+  you=car(180,H/2,'#ff5500',true);ai=car(520,H/2,'#00aaff',false);
+  time=40;over=false;document.getElementById('timer').textContent='40s';
+  document.getElementById('py').textContent='100';document.getElementById('pa').textContent='100';
+  lt=Date.now();
 }
-function spawn(){if(items.length<3&&!over)items.push({x:50+Math.random()*(W-100),y:50+Math.random()*(H-100),v:Math.random()>.5?2:3,l:200});if(!over)setTimeout(spawn,2000)}
-document.addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
-document.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
-const keys={};
+function bounce(b){
+  if(b.x-b.r<0||b.x+b.r>W){b.vx*=-0.7;b.pow-=4;if(b.x-b.r<0)b.x=b.r;else b.x=W-b.r}
+  if(b.y-b.r<0||b.y+b.r>H){b.vy*=-0.7;b.pow-=4;if(b.y-b.r<0)b.y=b.r;else b.y=H-b.r}
+  b.pow=Math.max(0,b.pow);
+}
 function update(){
   if(over)return;
-  if(Date.now()-last>1000){time--;last=Date.now();document.getElementById('time').textContent='Time: '+time+'s';if(time<=0)end()}
-  if(keys.arrowup||keys.w){you.vx+=Math.cos(you.angle)*.4;you.vy+=Math.sin(you.angle)*.4}
-  if(keys.arrowdown||keys.s){you.vx-=Math.cos(you.angle)*.2;you.vy-=Math.sin(you.angle)*.2}
-  if(keys.arrowleft||keys.a)you.angle-=.08;
-  if(keys.arrowright||keys.d)you.angle+=.08;
-  you.vx*=.96;you.vy*=.96;
-  if(items.length){let n=items[0],ang=Math.atan2(n.y-ai.y,n.x-ai.x);ai.angle=ang;ai.vx+=Math.cos(ang)*.3;ai.vy+=Math.sin(ang)*.3}
-  ai.vx*=.97;ai.vy*=.97;
-  [you,ai].forEach(c=>{c.x+=c.vx;c.y+=c.vy;if(c.x<30||c.x>W-30)c.vx*=-1;if(c.y<30||c.y>H-30)c.vy*=-1});
-  let d=Math.hypot(you.x-ai.x,you.y-ai.y);
-  if(d<40){you.score+=5;ai.score+=5;you.power=Math.max(20,you.power-10);ai.power=Math.max(20,ai.power-10);
-    let nx=(you.x-ai.x)/d,ny=(you.y-ai.y)/d;you.vx+=nx*3;you.vy+=ny*3;ai.vx-=nx*3;ai.vy-=ny*3;
-    for(let i=0;i<6;i++)parts.push({x:(you.x+ai.x)/2,y:(you.y+ai.y)/2,vx:(Math.random()-.5)*6,vy:(Math.random()-.5)*6,l:15});
+  const now=Date.now();
+  if(now-lt>1000){time--;lt=now;document.getElementById('timer').textContent=time+'s';if(time<=0)over=true}
+  if(keys['ArrowUp']||keys['w'])you.spd+=0.15;
+  if(keys['ArrowDown']||keys['s'])you.spd-=0.12;
+  if(keys['ArrowLeft']||keys['a'])you.ang-=0.06;
+  if(keys['ArrowRight']||keys['d'])you.ang+=0.06;
+  you.spd*=0.98;you.vx=Math.cos(you.ang)*you.spd*3;you.vy=Math.sin(you.ang)*you.spd*3;
+  const dx=you.x-ai.x,dy=you.y-ai.y;
+  ai.ang=Math.atan2(dy,dx)+ (Math.random()-0.5)*0.3;
+  ai.spd=Math.min(ai.spd+0.08,2.2);
+  ai.vx=Math.cos(ai.ang)*ai.spd*3;ai.vy=Math.sin(ai.ang)*ai.spd*3;
+  [you,ai].forEach(b=>{b.x+=b.vx;b.y+=b.vy;bounce(b)});
+  const dist=Math.hypot(you.x-ai.x,you.y-ai.y);
+  if(dist<you.r+ai.r){
+    const nx=(ai.x-you.x)/dist,ny=(ai.y-you.y)/dist;
+    you.x-=nx*4;ai.x+=nx*4;
+    you.pow-=8;ai.pow-=8;
+    you.spd*=-0.6;ai.spd*=-0.6;
   }
-  items=items.filter(it=>{it.l--;[you,ai].forEach(c=>{if(Math.hypot(c.x-it.x,c.y-it.y)<30){c.score+=it.v*20;c.power=Math.min(100,c.power+15);it.l=0}});return it.l>0});
-  parts=parts.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.l--;return p.l>0});
-  document.getElementById('you').textContent='YOU: '+Math.round(you.score);
-  document.getElementById('ai').textContent='AI: '+Math.round(ai.score);
+  document.getElementById('py').textContent=Math.round(you.pow);
+  document.getElementById('pa').textContent=Math.round(ai.pow);
+  if(you.pow<=0||ai.pow<=0)over=true;
 }
-function end(){over=true;alert(you.score>ai.score?'YOU WIN!':'AI Wins or Draw')}
 function draw(){
-  ctx.fillStyle='#111';ctx.fillRect(0,0,W,H);
-  items.forEach(it=>{ctx.fillStyle='#ff0';ctx.font='bold 18px Arial';ctx.fillText(it.v+'x',it.x,it.y)});
-  parts.forEach(p=>{ctx.fillStyle='#fa0';ctx.fillRect(p.x,p.y,4,4)});
-  [you,ai].forEach(c=>{
-    ctx.save();ctx.translate(c.x,c.y);ctx.rotate(c.angle);
-    ctx.fillStyle=c.col;ctx.fillRect(-18,-10,36,20);
-    ctx.fillStyle='#fff';ctx.fillRect(8,-6,8,12);
+  ctx.fillStyle='rgba(5,5,16,0.3)';ctx.fillRect(0,0,W,H);
+  [you,ai].forEach(b=>{
+    ctx.save();ctx.translate(b.x,b.y);ctx.rotate(b.ang);
+    ctx.fillStyle=b.c;ctx.fillRect(-18,-10,36,20);
+    ctx.fillStyle='#fff';ctx.fillRect(12,-6,6,12);
     ctx.restore();
+    ctx.fillStyle='#fff';ctx.font='11px Arial';ctx.textAlign='center';ctx.fillText(b.isP?'YOU':'AI',b.x,b.y-28);
   });
 }
 function loop(){update();draw();requestAnimationFrame(loop)}
-function restart(){init()}
+const keys={};
+document.addEventListener('keydown',e=>keys[e.key]=true);
+document.addEventListener('keyup',e=>keys[e.key]=false);
+function resize(){const [w,h]=document.getElementById('size').value.split('x').map(Number);cv.width=w;cv.height=h;W=w;H=h;init()}
+async function toggleRec(){
+  const btn=document.getElementById('recordBtn');
+  if(!rec){try{const stream=cv.captureStream(30);mr=new MediaRecorder(stream,{mimeType:'video/webm'});chunks=[];mr.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};mr.onstop=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(chunks,{type:'video/webm'}));a.download='car_clash.webm';a.click()};mr.start();rec=true;btn.textContent='⏹️ Stop';btn.style.background='#ffaa00'}catch(e){alert('Chrome Android best')}}else{mr.stop();rec=false;btn.textContent='🔴 Record';btn.style.background='#ff3333'}
+}
 init();loop();
 </script>
 </body>
