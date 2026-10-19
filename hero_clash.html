@@ -2,185 +2,58 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hero Clash - Competition Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Hero Clash</title>
 <style>
-  body { margin:0; background:#111122; color:#fff; font-family:Arial; display:flex; flex-direction:column; align-items:center; }
-  h1 { margin:10px; background:linear-gradient(90deg,#ff3366,#33ff99); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-  #info { display:flex; gap:40px; margin:8px; font-size:18px; }
-  canvas { border:4px solid #444; border-radius:12px; box-shadow:0 0 25px #ff3366; background:#0a0a18; }
-  button { margin:12px; padding:10px 25px; background:linear-gradient(45deg,#ff3366,#33ff99); border:none; border-radius:20px; color:#000; font-weight:bold; cursor:pointer; }
+body{margin:0;background:#0c0c18;color:#fff;font-family:system-ui;display:flex;flex-direction:column;align-items:center}
+h1{margin:8px;background:linear-gradient(90deg,#aa00ff,#00ffaa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+canvas{border:3px solid #333;border-radius:12px;box-shadow:0 0 20px #aa00ff;background:#111122;max-width:100%}
+#info{display:flex;gap:18px;margin:6px;font-size:15px}
+button{padding:8px 16px;background:#aa00ff;color:#fff;border:none;border-radius:20px}
 </style>
 </head>
 <body>
-<h1>🦸 Hero vs Villain Clash 🦸</h1>
-<div id="info">
-  <div style="color:#ff3366">Hero: <span id="s1">0</span> | Size: <span id="sz1">1x</span></div>
-  <div style="color:#33ff99">Villain: <span id="s2">0</span> | Size: <span id="sz2">1x</span></div>
-</div>
-<canvas id="c" width="800" height="500"></canvas>
-<button onclick="restart()">Restart Clash</button>
-
+<h1>🦸 Hero vs Villain</h1>
+<div id="info"><span id="h">Hero: 0</span><span id="v">Villain: 0</span><span id="t">50s</span></div>
+<canvas id="c" width="740" height="450"></canvas>
+<div style="margin:8px"><button onclick="restart()">Restart</button> Arrow / WASD to move</div>
 <script>
-const c = document.getElementById('c'), ctx = c.getContext('2d');
-const W=800, H=500;
-let heroes = [], particles = [], mults = [];
-
-function makeHero(x,y,col,name) {
-  return {x,y, vx:(Math.random()-0.5)*6, vy:(Math.random()-0.5)*6, col, name, score:0, scale:1, bounce:0};
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let W=cv.width,H=cv.height,hero,vill,items=[],parts=[],time=50,over=false,last=Date.now(),keys={};
+function guy(x,y,col,isH){return{x,y,vx:0,vy:0,r:20,col,isH,score:0}}
+function init(){hero=guy(180,225,'#aa00ff',true);vill=guy(560,225,'#ff4400',false);items=[];parts=[];time=50;over=false;spawn();last=Date.now()}
+function spawn(){if(items.length<3&&!over)items.push({x:40+Math.random()*(W-80),y:40+Math.random()*(H-80),v:Math.random()>.5?2:3,l:220});if(!over)setTimeout(spawn,1900)}
+document.addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
+document.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+function update(){
+  if(over)return;
+  if(Date.now()-last>1000){time--;last=Date.now();document.getElementById('t').textContent=time+'s';if(time<=0){over=true;alert(hero.score>vill.score?'Hero Wins!':'Villain Wins')}}
+  let acc=.4;
+  if(keys.arrowleft||keys.a)hero.vx-=acc; if(keys.arrowright||keys.d)hero.vx+=acc;
+  if(keys.arrowup||keys.w)hero.vy-=acc; if(keys.arrowdown||keys.s)hero.vy+=acc;
+  hero.vx*=.95;hero.vy*=.95;
+  if(items.length){let n=items.reduce((x,y)=>Math.hypot(x.x-vill.x,x.y-vill.y)<Math.hypot(y.x-vill.x,y.y-vill.y)?x:y);let ang=Math.atan2(n.y-vill.y,n.x-vill.x);vill.vx+=Math.cos(ang)*.3;vill.vy+=Math.sin(ang)*.3}
+  vill.vx*=.96;vill.vy*=.96;
+  [hero,vill].forEach(g=>{let sp=Math.hypot(g.vx,g.vy);if(sp>7){g.vx*=7/sp;g.vy*=7/sp}g.x+=g.vx;g.y+=g.vy;if(g.x-g.r<0||g.x+g.r>W)g.vx*=-1;if(g.y-g.r<0||g.y+g.r>H)g.vy*=-1});
+  let d=Math.hypot(hero.x-vill.x,hero.y-vill.y);
+  if(d<hero.r+vill.r){hero.score+=6;vill.score+=6;let nx=(hero.x-vill.x)/d,ny=(hero.y-vill.y)/d;hero.vx+=nx*2;hero.vy+=ny*2;vill.vx-=nx*2;vill.vy-=ny*2;for(let i=0;i<5;i++)parts.push({x:(hero.x+vill.x)/2,y:(hero.y+vill.y)/2,vx:(Math.random()-.5)*6,vy:(Math.random()-.5)*6,l:14})}
+  items=items.filter(it=>{it.l--;[hero,vill].forEach(g=>{if(Math.hypot(g.x-it.x,g.y-it.y)<g.r+12){g.score+=it.v*15;g.r=Math.min(35,g.r+1);it.l=0}});return it.l>0});
+  parts=parts.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.l--;return p.l>0});
+  document.getElementById('h').textContent='Hero: '+Math.round(hero.score);
+  document.getElementById('v').textContent='Villain: '+Math.round(vill.score);
 }
-
-function init() {
-  heroes = [
-    makeHero(200,250,'#ff3366','Hero'),
-    makeHero(600,250,'#33ff99','Villain')
-  ];
-  particles=[]; mults=[];
-  setTimeout(spawnM, 2500);
-}
-
-function spawnM() {
-  mults.push({x:100+Math.random()*(W-200), y:100+Math.random()*(H-200), v:Math.random()>0.5?2:3, t:280});
-  setTimeout(spawnM, 4000);
-}
-
-function update() {
-  heroes.forEach(h => {
-    h.x += h.vx;
-    h.y += h.vy;
-    h.bounce = Math.sin(Date.now()/100 + h.x)*5;
-
-    // Bounce walls
-    if (h.x < 40*h.scale) { h.x = 40*h.scale; h.vx = Math.abs(h.vx)*1.05; h.score += 2; }
-    if (h.x > W-40*h.scale) { h.x = W-40*h.scale; h.vx = -Math.abs(h.vx)*1.05; h.score += 2; }
-    if (h.y < 60*h.scale) { h.y = 60*h.scale; h.vy = Math.abs(h.vy)*1.05; h.score += 2; }
-    if (h.y > H-40*h.scale) { h.y = H-40*h.scale; h.vy = -Math.abs(h.vy)*1.05; h.score += 2; }
-
-    const spd = Math.hypot(h.vx,h.vy);
-    if (spd > 10) { h.vx *= 10/spd; h.vy *= 10/spd; }
+function draw(){
+  ctx.fillStyle='#111122';ctx.fillRect(0,0,W,H);
+  items.forEach(it=>{ctx.fillStyle='#ff0';ctx.font='bold 18px Arial';ctx.fillText(it.v+'x',it.x,it.y)});
+  parts.forEach(p=>{ctx.fillStyle='#fff';ctx.fillRect(p.x,p.y,3,3)});
+  [hero,vill].forEach(g=>{
+    ctx.fillStyle=g.col;ctx.beginPath();ctx.arc(g.x,g.y,g.r,0,6.28);ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='12px Arial';ctx.textAlign='center';ctx.fillText(g.isH?'H':'V',g.x,g.y+4);
   });
-
-  // Collision
-  const a=heroes[0], b=heroes[1];
-  const d = Math.hypot(a.x-b.x, a.y-b.y);
-  if (d < 70*a.scale) {
-    const nx = (b.x-a.x)/d, ny = (b.y-a.y)/d;
-    a.vx -= nx*3; a.vy -= ny*3;
-    b.vx += nx*3; b.vy += ny*3;
-    a.score += 6; b.score += 6;
-    a.scale = Math.min(a.scale + 0.05, 2.2);
-    b.scale = Math.min(b.scale + 0.05, 2.2);
-    for(let i=0;i<10;i++) particles.push({x:(a.x+b.x)/2, y:(a.y+b.y)/2, vx:(Math.random()-0.5)*8, vy:(Math.random()-0.5)*8, life:25, col:Math.random()>0.5?a.col:b.col});
-  }
-
-  mults = mults.filter(m => {
-    m.t--;
-    heroes.forEach(h => {
-      if (Math.hypot(h.x-m.x, h.y-m.y) < 50*h.scale) {
-        h.scale = Math.min(h.scale * m.v, 2.5);
-        h.score += m.v * 12;
-        m.t = 0;
-      }
-    });
-    return m.t > 0;
-  });
-
-  particles = particles.filter(p => { p.x+=p.vx; p.y+=p.vy; p.life--; return p.life>0; });
-
-  document.getElementById('s1').textContent = heroes[0].score;
-  document.getElementById('s2').textContent = heroes[1].score;
-  document.getElementById('sz1').textContent = heroes[0].scale.toFixed(1)+'x';
-  document.getElementById('sz2').textContent = heroes[1].scale.toFixed(1)+'x';
 }
-
-function drawHero(h) {
-  ctx.save();
-  ctx.translate(h.x, h.y + h.bounce);
-  ctx.scale(h.scale, h.scale);
-  ctx.shadowBlur = 15;
-  ctx.shadowColor = h.col;
-
-  // Head
-  ctx.fillStyle = h.col;
-  ctx.beginPath();
-  ctx.arc(0, -25, 12, 0, Math.PI*2);
-  ctx.fill();
-
-  // Body
-  ctx.strokeStyle = h.col;
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(0, -13);
-  ctx.lineTo(0, 15);
-  ctx.stroke();
-
-  // Arms
-  ctx.beginPath();
-  ctx.moveTo(0, -5);
-  ctx.lineTo(-15, 5);
-  ctx.moveTo(0, -5);
-  ctx.lineTo(15, 5);
-  ctx.stroke();
-
-  // Legs
-  ctx.beginPath();
-  ctx.moveTo(0, 15);
-  ctx.lineTo(-12, 30);
-  ctx.moveTo(0, 15);
-  ctx.lineTo(12, 30);
-  ctx.stroke();
-
-  // Eyes
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.arc(-4, -27, 2, 0, Math.PI*2);
-  ctx.arc(4, -27, 2, 0, Math.PI*2);
-  ctx.fill();
-
-  ctx.restore();
-}
-
-function draw() {
-  ctx.fillStyle = 'rgba(10,10,24,0.25)';
-  ctx.fillRect(0,0,W,H);
-
-  mults.forEach(m => {
-    ctx.font = 'bold 28px Arial';
-    ctx.fillStyle = '#ffee00';
-    ctx.shadowBlur = 18;
-    ctx.shadowColor = '#ff0';
-    ctx.textAlign = 'center';
-    ctx.fillText(m.v+'x', m.x, m.y);
-  });
-
-  particles.forEach(p => {
-    ctx.fillStyle = p.col;
-    ctx.globalAlpha = p.life/25;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-  });
-
-  heroes.forEach(drawHero);
-}
-
-function loop(){ update(); draw(); requestAnimationFrame(loop); }
-function restart(){ init(); }
-
-c.addEventListener('click', e => {
-  const r = c.getBoundingClientRect();
-  const mx = (e.clientX-r.left)*(W/r.width), my = (e.clientY-r.top)*(H/r.height);
-  heroes.forEach(h => {
-    if (Math.hypot(h.x-mx, h.y-my)<130) {
-      h.vx += (h.x - mx)*0.04;
-      h.vy += (h.y - my)*0.04;
-    }
-  });
-});
-
-init();
-loop();
+function loop(){update();draw();requestAnimationFrame(loop)}
+function restart(){init()}
+init();loop();
 </script>
 </body>
 </html>
