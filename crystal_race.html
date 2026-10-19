@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"><title>Crystal Race</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#050510;color:#fff;font-family:Arial;display:flex;flex-direction:column;align-items:center;min-height:100vh;overflow:hidden;touch-action:none}h1{margin:6px 0;background:linear-gradient(90deg,#aa55ff,#55ffff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-size:22px}#info{display:flex;gap:10px;margin:4px;font-size:13px}canvas{border:3px solid #444;border-radius:10px;box-shadow:0 0 20px #aa55ff;background:#111;max-width:100%}button{padding:7px 14px;margin:4px;background:#aa55ff;color:#fff;border:none;border-radius:16px;font-weight:bold;cursor:pointer}</style></head>
+<body><h1>💎 Crystal Race 💎</h1><div id="info"><div>YOU: <span id="sy">0</span></div><div>AI: <span id="sa">0</span></div><div id="t">45s</div></div>
+<canvas id="g" width="700" height="420"></canvas>
+<div><button onclick="init()">Restart</button><button id="rec" onclick="tog()">🔴 Record</button></div>
+<script>
+const cv=document.getElementById('g'),ctx=cv.getContext('2d');let W=700,H=420,y,a,crys=[],t=45,o=false,lt=Date.now(),rec=false,mr,ch=[];
+function pl(x,y,c,p){return{x,y,vx:0,vy:0,sc:0,c,p,r:18}}
+function init(){y=pl(180,H/2,'#aa55ff',true);a=pl(520,H/2,'#55ffff',false);crys=[];t=45;o=false;lt=Date.now();spawn()}
+function spawn(){if(crys.length<5&&!o)crys.push({x:40+Math.random()*(W-80),y:40+Math.random()*(H-80),life:200});if(!o)setTimeout(spawn,1200)}
+function up(){if(o)return;const n=Date.now();if(n-lt>1000){t--;lt=n;document.getElementById('t').textContent=t+'s';if(t<=0)o=true}
+  if(keys['a'])y.vx-=0.4;if(keys['d'])y.vx+=0.4;if(keys['w'])y.vy-=0.4;if(keys['s'])y.vy+=0.4;
+  if(crys.length){const n=crys.reduce((x,y)=>Math.hypot(x.x-a.x,x.y-a.y)<Math.hypot(y.x-a.x,y.y-a.y)?x:y);const ang=Math.atan2(n.y-a.y,n.x-a.x);a.vx+=Math.cos(ang)*0.35;a.vy+=Math.sin(ang)*0.35}
+  [y,a].forEach(b=>{b.vx*=0.94;b.vy*=0.94;b.x+=b.vx;b.y+=b.vy;b.x=Math.max(b.r,Math.min(W-b.r,b.x));b.y=Math.max(b.r,Math.min(H-b.r,b.y))});
+  crys=crys.filter(c=>{c.life--;[y,a].forEach(b=>{if(Math.hypot(b.x-c.x,b.y-c.y)<b.r+12){b.sc+=10;c.life=0}});return c.life>0});
+  document.getElementById('sy').textContent=y.sc;document.getElementById('sa').textContent=a.sc;
+}
+function dr(){ctx.fillStyle='rgba(5,5,16,0.3)';ctx.fillRect(0,0,W,H);crys.forEach(c=>{ctx.fillStyle='#ffff00';ctx.beginPath();ctx.arc(c.x,c.y,10,0,Math.PI*2);ctx.fill()});[y,a].forEach(b=>{ctx.fillStyle=b.c;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='11px Arial';ctx.textAlign='center';ctx.fillText(b.p?'YOU':'AI',b.x,b.y+4)})}
+function lp(){up();dr();requestAnimationFrame(lp)}
+const keys={};document.addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);document.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+async function tog(){const b=document.getElementById('rec');if(!rec){try{mr=new MediaRecorder(cv.captureStream(30),{mimeType:'video/webm'});ch=[];mr.ondataavailable=e=>{if(e.data.size)ch.push(e.data)};mr.onstop=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(ch,{type:'video/webm'}));a.download='crystal.webm';a.click()};mr.start();rec=true;b.textContent='⏹️'}catch(e){alert('Chrome')}}else{mr.stop();rec=false;b.textContent='🔴 Record'}}
+init();lp();
+</script></body></html>
