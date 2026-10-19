@@ -2,161 +2,233 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Neon Ball Battle - Competition Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Neon Ball Battle - Playable</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     background: #0a0a12;
     color: #fff;
-    font-family: 'Arial', sans-serif;
+    font-family: Arial, sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
     min-height: 100vh;
     overflow: hidden;
+    touch-action: none;
   }
   h1 {
-    margin: 10px 0;
+    margin: 8px 0;
     background: linear-gradient(90deg, #ff00ff, #00ffff);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    font-size: 28px;
-    text-shadow: 0 0 10px #ff00ff;
+    font-size: 24px;
   }
   #info {
     display: flex;
-    gap: 40px;
-    margin: 10px;
-    font-size: 18px;
+    gap: 20px;
+    margin: 6px;
+    font-size: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
   }
-  .score { color: #ff55ff; }
-  .score2 { color: #55ffff; }
+  .you { color: #ff55ff; }
+  .ai { color: #55ffff; }
+  #timer { color: #ffff00; font-weight: bold; }
   canvas {
-    border: 4px solid #333;
-    border-radius: 12px;
-    box-shadow: 0 0 30px #ff00ff, 0 0 60px #00ffff;
+    border: 3px solid #444;
+    border-radius: 10px;
+    box-shadow: 0 0 20px #ff00ff;
     background: radial-gradient(circle, #1a1a2e, #0a0a12);
     max-width: 100%;
+    touch-action: none;
+  }
+  .controls {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
   }
   button {
-    margin: 15px;
-    padding: 12px 30px;
-    font-size: 18px;
+    padding: 10px 20px;
+    font-size: 16px;
     background: linear-gradient(45deg, #ff00ff, #00ffff);
     border: none;
-    border-radius: 25px;
+    border-radius: 20px;
     color: #000;
     font-weight: bold;
     cursor: pointer;
-    box-shadow: 0 0 15px #ff00ff;
   }
-  button:hover { transform: scale(1.05); }
+  #winScreen {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+  #winScreen h2 { font-size: 36px; margin-bottom: 20px; }
 </style>
 </head>
 <body>
 <h1>⚡ Neon Ball Battle ⚡</h1>
 <div id="info">
-  <div class="score">Pink: <span id="score1">0</span> (Size: <span id="size1">20</span>)</div>
-  <div class="score2">Cyan: <span id="score2">0</span> (Size: <span id="size2">20</span>)</div>
+  <div class="you">YOU (Pink): <span id="scoreYou">0</span> | Size: <span id="sizeYou">22</span></div>
+  <div class="ai">AI (Cyan): <span id="scoreAi">0</span> | Size: <span id="sizeAi">22</span></div>
+  <div id="timer">Time: 60s</div>
 </div>
 <canvas id="game" width="800" height="500"></canvas>
-<button onclick="restart()">Restart Battle</button>
+<div class="controls">
+  <button onclick="restart()">Restart</button>
+  <div style="font-size:14px; opacity:0.8;">Arrow Keys / WASD to move | Click/Touch to boost</div>
+</div>
+
+<div id="winScreen">
+  <h2 id="winText"></h2>
+  <button onclick="restart()">Play Again</button>
+</div>
 
 <script>
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 let W = canvas.width, H = canvas.height;
 
-let balls = [];
-let particles = [];
-let multipliers = [];
-let running = true;
+let player, ai, particles = [], multipliers = [];
+let keys = {};
+let timeLeft = 60;
+let gameOver = false;
+let lastTime = Date.now();
 
-function createBall(x, y, color, name) {
+function createBall(x, y, color, isPlayer) {
   return {
     x, y,
-    vx: (Math.random() - 0.5) * 8,
-    vy: (Math.random() - 0.5) * 8,
+    vx: 0, vy: 0,
     r: 22,
     color,
-    name,
-    score: 0,
-    glow: color
+    isPlayer,
+    score: 0
   };
 }
 
 function init() {
-  balls = [
-    createBall(200, 250, '#ff00ff', 'Pink'),
-    createBall(600, 250, '#00ffff', 'Cyan')
-  ];
+  player = createBall(200, 250, '#ff00ff', true);
+  ai = createBall(600, 250, '#00ffff', false);
   particles = [];
   multipliers = [];
+  timeLeft = 60;
+  gameOver = false;
+  document.getElementById('winScreen').style.display = 'none';
   spawnMultiplier();
+  lastTime = Date.now();
 }
 
 function spawnMultiplier() {
-  if (multipliers.length < 2) {
+  if (multipliers.length < 3 && !gameOver) {
     multipliers.push({
-      x: 100 + Math.random() * (W - 200),
-      y: 100 + Math.random() * (H - 200),
+      x: 60 + Math.random() * (W - 120),
+      y: 60 + Math.random() * (H - 120),
       value: Math.random() > 0.5 ? 2 : 3,
-      life: 300
+      life: 400
     });
   }
-  setTimeout(spawnMultiplier, 4000 + Math.random() * 3000);
+  if (!gameOver) setTimeout(spawnMultiplier, 3500 + Math.random() * 2000);
 }
 
-function update() {
-  if (!running) return;
+document.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+document.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
-  // Update balls
-  balls.forEach(b => {
+function update() {
+  if (gameOver) return;
+
+  const now = Date.now();
+  if (now - lastTime > 1000) {
+    timeLeft--;
+    lastTime = now;
+    document.getElementById('timer').textContent = 'Time: ' + timeLeft + 's';
+    if (timeLeft <= 0) endGame();
+  }
+
+  // Player controls
+  const acc = 0.35;
+  if (keys['arrowleft'] || keys['a']) player.vx -= acc;
+  if (keys['arrowright'] || keys['d']) player.vx += acc;
+  if (keys['arrowup'] || keys['w']) player.vy -= acc;
+  if (keys['arrowdown'] || keys['s']) player.vy += acc;
+
+  // Friction
+  player.vx *= 0.96;
+  player.vy *= 0.96;
+  ai.vx *= 0.97;
+  ai.vy *= 0.97;
+
+  // AI simple logic: go towards nearest multiplier or random
+  if (multipliers.length > 0) {
+    let nearest = multipliers[0];
+    let nd = Math.hypot(nearest.x - ai.x, nearest.y - ai.y);
+    multipliers.forEach(m => {
+      const d = Math.hypot(m.x - ai.x, m.y - ai.y);
+      if (d < nd) { nearest = m; nd = d; }
+    });
+    const ang = Math.atan2(nearest.y - ai.y, nearest.x - ai.x);
+    ai.vx += Math.cos(ang) * 0.25;
+    ai.vy += Math.sin(ang) * 0.25;
+  } else {
+    if (Math.random() < 0.05) {
+      ai.vx += (Math.random() - 0.5) * 2;
+      ai.vy += (Math.random() - 0.5) * 2;
+    }
+  }
+
+  // Limit speed
+  [player, ai].forEach(b => {
+    const spd = Math.hypot(b.vx, b.vy);
+    if (spd > 9) { b.vx *= 9/spd; b.vy *= 9/spd; }
+  });
+
+  // Move
+  [player, ai].forEach(b => {
     b.x += b.vx;
     b.y += b.vy;
 
     // Bounce walls
-    if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx) * 1.05; b.score += 1; }
-    if (b.x + b.r > W) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 1.05; b.score += 1; }
-    if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy) * 1.05; b.score += 1; }
-    if (b.y + b.r > H) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 1.05; b.score += 1; }
-
-    // Limit speed
-    const speed = Math.hypot(b.vx, b.vy);
-    if (speed > 12) { b.vx *= 12/speed; b.vy *= 12/speed; }
+    if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.8; }
+    if (b.x + b.r > W) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.8; }
+    if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.8; }
+    if (b.y + b.r > H) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 0.8; }
   });
 
-  // Ball vs Ball collision
-  const a = balls[0], b = balls[1];
-  const dx = b.x - a.x, dy = b.y - a.y;
+  // Collision between balls
+  const dx = ai.x - player.x, dy = ai.y - player.y;
   const dist = Math.hypot(dx, dy);
-  if (dist < a.r + b.r) {
-    // Separate
-    const overlap = (a.r + b.r - dist) / 2;
+  if (dist < player.r + ai.r && dist > 0) {
+    const overlap = (player.r + ai.r - dist) / 2;
     const nx = dx / dist, ny = dy / dist;
-    a.x -= nx * overlap; b.x += nx * overlap;
+    player.x -= nx * overlap;
+    ai.x += nx * overlap;
 
-    // Bounce
-    const relVx = a.vx - b.vx, relVy = a.vy - b.vy;
+    const relVx = player.vx - ai.vx;
+    const relVy = player.vy - ai.vy;
     const sep = relVx * nx + relVy * ny;
     if (sep < 0) {
-      a.vx -= sep * nx; a.vy -= sep * ny;
-      b.vx += sep * nx; b.vy += sep * ny;
+      player.vx -= sep * nx * 0.8;
+      player.vy -= sep * ny * 0.8;
+      ai.vx += sep * nx * 0.8;
+      ai.vy += sep * ny * 0.8;
     }
 
-    // Grow both + score
-    a.r = Math.min(a.r + 1.5, 80);
-    b.r = Math.min(b.r + 1.5, 80);
-    a.score += 5;
-    b.score += 5;
+    player.r = Math.min(player.r + 0.8, 70);
+    ai.r = Math.min(ai.r + 0.8, 70);
+    player.score += 3;
+    ai.score += 3;
 
-    // Particles
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 8; i++) {
       particles.push({
-        x: (a.x + b.x)/2, y: (a.y + b.y)/2,
-        vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10,
-        life: 30, color: Math.random()>0.5 ? a.color : b.color
+        x: (player.x + ai.x)/2, y: (player.y + ai.y)/2,
+        vx: (Math.random()-0.5)*8, vy: (Math.random()-0.5)*8,
+        life: 25, color: Math.random()>0.5 ? player.color : ai.color
       });
     }
   }
@@ -164,17 +236,16 @@ function update() {
   // Multipliers
   multipliers = multipliers.filter(m => {
     m.life--;
-    balls.forEach(ball => {
-      if (Math.hypot(ball.x - m.x, ball.y - m.y) < ball.r + 20) {
-        ball.r = Math.min(ball.r * m.value, 90);
-        ball.score += m.value * 10;
+    [player, ai].forEach(ball => {
+      if (Math.hypot(ball.x - m.x, ball.y - m.y) < ball.r + 18) {
+        ball.r = Math.min(ball.r * m.value, 85);
+        ball.score += m.value * 15;
         m.life = 0;
-        // Big particles
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 15; i++) {
           particles.push({
             x: m.x, y: m.y,
-            vx: (Math.random()-0.5)*15, vy: (Math.random()-0.5)*15,
-            life: 40, color: '#ffff00'
+            vx: (Math.random()-0.5)*12, vy: (Math.random()-0.5)*12,
+            life: 30, color: '#ffff00'
           });
         }
       }
@@ -190,24 +261,40 @@ function update() {
     return p.life > 0;
   });
 
-  // Update UI
-  document.getElementById('score1').textContent = balls[0].score;
-  document.getElementById('score2').textContent = balls[1].score;
-  document.getElementById('size1').textContent = Math.round(balls[0].r);
-  document.getElementById('size2').textContent = Math.round(balls[1].r);
+  // UI
+  document.getElementById('scoreYou').textContent = Math.round(player.score);
+  document.getElementById('scoreAi').textContent = Math.round(ai.score);
+  document.getElementById('sizeYou').textContent = Math.round(player.r);
+  document.getElementById('sizeAi').textContent = Math.round(ai.r);
+}
+
+function endGame() {
+  gameOver = true;
+  const winScreen = document.getElementById('winScreen');
+  const winText = document.getElementById('winText');
+  if (player.score > ai.score || (player.score === ai.score && player.r > ai.r)) {
+    winText.textContent = 'YOU WIN! 🎉';
+    winText.style.color = '#ff55ff';
+  } else if (ai.score > player.score) {
+    winText.textContent = 'AI Wins 😢';
+    winText.style.color = '#55ffff';
+  } else {
+    winText.textContent = 'Draw!';
+    winText.style.color = '#ffff00';
+  }
+  winScreen.style.display = 'flex';
 }
 
 function draw() {
-  // Trail effect
-  ctx.fillStyle = 'rgba(10,10,18,0.25)';
+  ctx.fillStyle = 'rgba(10,10,18,0.3)';
   ctx.fillRect(0, 0, W, H);
 
   // Multipliers
   multipliers.forEach(m => {
     ctx.save();
-    ctx.font = 'bold 28px Arial';
+    ctx.font = 'bold 26px Arial';
     ctx.fillStyle = '#ffff00';
-    ctx.shadowBlur = 20;
+    ctx.shadowBlur = 15;
     ctx.shadowColor = '#ffff00';
     ctx.textAlign = 'center';
     ctx.fillText(m.value + 'x', m.x, m.y);
@@ -219,19 +306,19 @@ function draw() {
     ctx.beginPath();
     ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
     ctx.fillStyle = p.color;
-    ctx.globalAlpha = p.life / 30;
+    ctx.globalAlpha = p.life / 25;
     ctx.fill();
     ctx.globalAlpha = 1;
   });
 
-  // Balls with glow
-  balls.forEach(b => {
+  // Balls
+  [player, ai].forEach(b => {
     ctx.save();
-    ctx.shadowBlur = 30;
+    ctx.shadowBlur = 25;
     ctx.shadowColor = b.color;
     const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
     grad.addColorStop(0, '#ffffff');
-    grad.addColorStop(0.4, b.color);
+    grad.addColorStop(0.35, b.color);
     grad.addColorStop(1, b.color + '00');
     ctx.fillStyle = grad;
     ctx.beginPath();
@@ -239,11 +326,16 @@ function draw() {
     ctx.fill();
     ctx.restore();
 
-    // Inner highlight
     ctx.beginPath();
-    ctx.arc(b.x - b.r*0.3, b.y - b.r*0.3, b.r*0.3, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.arc(b.x - b.r*0.3, b.y - b.r*0.3, b.r*0.25, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
     ctx.fill();
+
+    // Label
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(b.isPlayer ? 'YOU' : 'AI', b.x, b.y + 4);
   });
 }
 
@@ -257,23 +349,20 @@ function restart() {
   init();
 }
 
-// Mouse boost for interaction
-canvas.addEventListener('click', (e) => {
+// Touch / click boost
+canvas.addEventListener('pointerdown', (e) => {
   const rect = canvas.getBoundingClientRect();
   const mx = (e.clientX - rect.left) * (W / rect.width);
   const my = (e.clientY - rect.top) * (H / rect.height);
-  balls.forEach(b => {
-    const d = Math.hypot(b.x - mx, b.y - my);
-    if (d < 150) {
-      const force = 5;
-      b.vx += (b.x - mx) / d * force;
-      b.vy += (b.y - my) / d * force;
-    }
-  });
+  const d = Math.hypot(player.x - mx, player.y - my);
+  if (d < 200) {
+    const force = 4;
+    player.vx += (player.x - mx) / d * force;
+    player.vy += (player.y - my) / d * force;
+  }
 });
 
 init();
-spawnMultiplier();
 loop();
 </script>
 </body>
