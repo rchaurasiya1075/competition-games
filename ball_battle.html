@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Ball Battle - Competition Game</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a12;
+    color: #fff;
+    font-family: 'Arial', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+  h1 {
+    margin: 10px 0;
+    background: linear-gradient(90deg, #ff00ff, #00ffff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-size: 28px;
+    text-shadow: 0 0 10px #ff00ff;
+  }
+  #info {
+    display: flex;
+    gap: 40px;
+    margin: 10px;
+    font-size: 18px;
+  }
+  .score { color: #ff55ff; }
+  .score2 { color: #55ffff; }
+  canvas {
+    border: 4px solid #333;
+    border-radius: 12px;
+    box-shadow: 0 0 30px #ff00ff, 0 0 60px #00ffff;
+    background: radial-gradient(circle, #1a1a2e, #0a0a12);
+    max-width: 100%;
+  }
+  button {
+    margin: 15px;
+    padding: 12px 30px;
+    font-size: 18px;
+    background: linear-gradient(45deg, #ff00ff, #00ffff);
+    border: none;
+    border-radius: 25px;
+    color: #000;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 0 15px #ff00ff;
+  }
+  button:hover { transform: scale(1.05); }
+</style>
+</head>
+<body>
+<h1>⚡ Neon Ball Battle ⚡</h1>
+<div id="info">
+  <div class="score">Pink: <span id="score1">0</span> (Size: <span id="size1">20</span>)</div>
+  <div class="score2">Cyan: <span id="score2">0</span> (Size: <span id="size2">20</span>)</div>
+</div>
+<canvas id="game" width="800" height="500"></canvas>
+<button onclick="restart()">Restart Battle</button>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let W = canvas.width, H = canvas.height;
+
+let balls = [];
+let particles = [];
+let multipliers = [];
+let running = true;
+
+function createBall(x, y, color, name) {
+  return {
+    x, y,
+    vx: (Math.random() - 0.5) * 8,
+    vy: (Math.random() - 0.5) * 8,
+    r: 22,
+    color,
+    name,
+    score: 0,
+    glow: color
+  };
+}
+
+function init() {
+  balls = [
+    createBall(200, 250, '#ff00ff', 'Pink'),
+    createBall(600, 250, '#00ffff', 'Cyan')
+  ];
+  particles = [];
+  multipliers = [];
+  spawnMultiplier();
+}
+
+function spawnMultiplier() {
+  if (multipliers.length < 2) {
+    multipliers.push({
+      x: 100 + Math.random() * (W - 200),
+      y: 100 + Math.random() * (H - 200),
+      value: Math.random() > 0.5 ? 2 : 3,
+      life: 300
+    });
+  }
+  setTimeout(spawnMultiplier, 4000 + Math.random() * 3000);
+}
+
+function update() {
+  if (!running) return;
+
+  // Update balls
+  balls.forEach(b => {
+    b.x += b.vx;
+    b.y += b.vy;
+
+    // Bounce walls
+    if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx) * 1.05; b.score += 1; }
+    if (b.x + b.r > W) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 1.05; b.score += 1; }
+    if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy) * 1.05; b.score += 1; }
+    if (b.y + b.r > H) { b.y = H - b.r; b.vy = -Math.abs(b.vy) * 1.05; b.score += 1; }
+
+    // Limit speed
+    const speed = Math.hypot(b.vx, b.vy);
+    if (speed > 12) { b.vx *= 12/speed; b.vy *= 12/speed; }
+  });
+
+  // Ball vs Ball collision
+  const a = balls[0], b = balls[1];
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist < a.r + b.r) {
+    // Separate
+    const overlap = (a.r + b.r - dist) / 2;
+    const nx = dx / dist, ny = dy / dist;
+    a.x -= nx * overlap; b.x += nx * overlap;
+
+    // Bounce
+    const relVx = a.vx - b.vx, relVy = a.vy - b.vy;
+    const sep = relVx * nx + relVy * ny;
+    if (sep < 0) {
+      a.vx -= sep * nx; a.vy -= sep * ny;
+      b.vx += sep * nx; b.vy += sep * ny;
+    }
+
+    // Grow both + score
+    a.r = Math.min(a.r + 1.5, 80);
+    b.r = Math.min(b.r + 1.5, 80);
+    a.score += 5;
+    b.score += 5;
+
+    // Particles
+    for (let i = 0; i < 12; i++) {
+      particles.push({
+        x: (a.x + b.x)/2, y: (a.y + b.y)/2,
+        vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10,
+        life: 30, color: Math.random()>0.5 ? a.color : b.color
+      });
+    }
+  }
+
+  // Multipliers
+  multipliers = multipliers.filter(m => {
+    m.life--;
+    balls.forEach(ball => {
+      if (Math.hypot(ball.x - m.x, ball.y - m.y) < ball.r + 20) {
+        ball.r = Math.min(ball.r * m.value, 90);
+        ball.score += m.value * 10;
+        m.life = 0;
+        // Big particles
+        for (let i = 0; i < 20; i++) {
+          particles.push({
+            x: m.x, y: m.y,
+            vx: (Math.random()-0.5)*15, vy: (Math.random()-0.5)*15,
+            life: 40, color: '#ffff00'
+          });
+        }
+      }
+    });
+    return m.life > 0;
+  });
+
+  // Particles
+  particles = particles.filter(p => {
+    p.x += p.vx; p.y += p.vy;
+    p.life--;
+    p.vx *= 0.95; p.vy *= 0.95;
+    return p.life > 0;
+  });
+
+  // Update UI
+  document.getElementById('score1').textContent = balls[0].score;
+  document.getElementById('score2').textContent = balls[1].score;
+  document.getElementById('size1').textContent = Math.round(balls[0].r);
+  document.getElementById('size2').textContent = Math.round(balls[1].r);
+}
+
+function draw() {
+  // Trail effect
+  ctx.fillStyle = 'rgba(10,10,18,0.25)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Multipliers
+  multipliers.forEach(m => {
+    ctx.save();
+    ctx.font = 'bold 28px Arial';
+    ctx.fillStyle = '#ffff00';
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = '#ffff00';
+    ctx.textAlign = 'center';
+    ctx.fillText(m.value + 'x', m.x, m.y);
+    ctx.restore();
+  });
+
+  // Particles
+  particles.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = p.life / 30;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+
+  // Balls with glow
+  balls.forEach(b => {
+    ctx.save();
+    ctx.shadowBlur = 30;
+    ctx.shadowColor = b.color;
+    const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.4, b.color);
+    grad.addColorStop(1, b.color + '00');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    // Inner highlight
+    ctx.beginPath();
+    ctx.arc(b.x - b.r*0.3, b.y - b.r*0.3, b.r*0.3, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.fill();
+  });
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+function restart() {
+  init();
+}
+
+// Mouse boost for interaction
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (W / rect.width);
+  const my = (e.clientY - rect.top) * (H / rect.height);
+  balls.forEach(b => {
+    const d = Math.hypot(b.x - mx, b.y - my);
+    if (d < 150) {
+      const force = 5;
+      b.vx += (b.x - mx) / d * force;
+      b.vy += (b.y - my) / d * force;
+    }
+  });
+});
+
+init();
+spawnMultiplier();
+loop();
+</script>
+</body>
+</html>
