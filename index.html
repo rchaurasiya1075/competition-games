@@ -2,93 +2,469 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Competition Games Collection</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Competition Games Arcade</title>
 <style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    margin: 0;
-    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    background: #07070f;
     color: #fff;
-    font-family: 'Segoe UI', Arial, sans-serif;
-    min-height: 100vh;
+    font-family: system-ui, Arial, sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 20px;
+    min-height: 100vh;
+    overflow: hidden;
   }
-  h1 {
-    font-size: 34px;
-    margin-bottom: 8px;
-    background: linear-gradient(90deg, #ff00aa, #00ffcc, #ffaa00);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-align: center;
+  h1 { margin: 10px 0 6px; font-size: 26px; background: linear-gradient(90deg,#ff55ff,#55ffff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  #setup, #gameWrap { width: 100%; max-width: 980px; display: flex; flex-direction: column; align-items: center; padding: 8px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin: 6px 0; align-items: center; }
+  label { font-size: 14px; }
+  input, select, button {
+    padding: 8px 12px; border-radius: 10px; border: 1px solid #444; background: #1a1a28; color: #fff; font-size: 14px;
   }
-  .featured {
-    background: rgba(255,0,255,0.15);
-    border: 2px solid #ff55ff;
-    border-radius: 16px;
-    padding: 18px;
-    margin: 15px 0;
-    text-align: center;
-    max-width: 680px;
+  button { background: linear-gradient(45deg,#ff55ff,#55ffff); color: #000; font-weight: bold; cursor: pointer; border: none; }
+  button:hover { opacity: 0.9; }
+  #modeSelect { min-width: 220px; }
+  canvas { border: 3px solid #333; border-radius: 12px; background: #0d0d18; max-width: 100%; box-shadow: 0 0 30px rgba(255,85,255,0.3); }
+  #hud { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin: 8px; font-size: 15px; font-weight: bold; }
+  .p1 { color: var(--c1, #ff55ff); }
+  .p2 { color: var(--c2, #55ffff); }
+  #status { color: #ffee55; }
+  #controls { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  #recordBtn { background: #e33; color: #fff; }
+  #musicBtn { background: #2a8; color: #fff; }
+  #overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+    flex-direction: column; align-items: center; justify-content: center; z-index: 20; text-align: center; padding: 20px;
   }
-  .featured a { color: #ff55ff; font-size: 22px; font-weight: bold; text-decoration: none; }
-  .featured p { margin-top: 8px; opacity: 0.95; line-height: 1.4; }
-  p { text-align: center; max-width: 720px; opacity: 0.9; margin-bottom: 20px; }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 20px;
-    width: 100%;
-    max-width: 1000px;
-  }
-  .card {
-    background: rgba(255,255,255,0.08);
-    border-radius: 14px;
-    padding: 18px;
-    text-align: center;
-    text-decoration: none;
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.12);
-    transition: transform 0.25s;
-  }
-  .card:hover { transform: translateY(-6px); }
-  .emoji { font-size: 42px; }
-  .card h2 { margin: 8px 0; font-size: 20px; }
-  footer { margin-top: 30px; opacity: 0.6; font-size: 13px; text-align: center; }
+  #overlay h2 { font-size: 32px; margin-bottom: 10px; }
+  #overlay p { font-size: 18px; margin-bottom: 16px; }
 </style>
 </head>
 <body>
-<h1>🔥 Competition Games 🔥</h1>
+<h1>🔥 Competition Arcade 🔥</h1>
 
-<div class="featured">
-  <a href="ball_battle.html">⚡ Neon Ball Battle (FULL) ⚡</a>
-  <p>Custom Names + Colors • 10 Levels with Point Targets • Sound Effects + Background Music • YOU vs AI • 2x/3x Multipliers • Built-in Recording • Resize for Reels</p>
+<div id="setup">
+  <div class="row">
+    <label>Name 1: <input id="n1" value="Player 1" maxlength="14"></label>
+    <label>Color 1: <input type="color" id="c1" value="#ff3366"></label>
+  </div>
+  <div class="row">
+    <label>Name 2: <input id="n2" value="Player 2" maxlength="14"></label>
+    <label>Color 2: <input type="color" id="c2" value="#33aaff"></label>
+  </div>
+  <div class="row">
+    <select id="modeSelect">
+      <option value="ballfill">Ball Fill (Size) — First to fill area</option>
+      <option value="ballspawn">Ball Spawn (Quantity) — More balls win</option>
+      <option value="carcrash">Car Crash Power</option>
+      <option value="missiledodge">Missile / Meteor Dodge</option>
+      <option value="crystalrace">Crystal Race</option>
+      <option value="orbitsurvival">Orbit Survival</option>
+    </select>
+    <button onclick="startMatch()">Start Automatic Match</button>
+  </div>
+  <p style="opacity:0.7; font-size:13px; text-align:center; max-width:600px;">Sirf name + color choose karo. Dono equal power se start karenge. Game automatic chalega. Clear winner decide hoga.</p>
 </div>
 
-<p>Other games:</p>
-
-<div class="grid">
-  <a class="card" href="car_clash.html">
-    <div class="emoji">🏎️</div>
-    <h2>Turbo Car Clash</h2>
-    <p>Drive & power boost</p>
-  </a>
-  <a class="card" href="missile_mayhem.html">
-    <div class="emoji">🚀</div>
-    <h2>Missile Mayhem</h2>
-    <p>Steer your missile</p>
-  </a>
-  <a class="card" href="hero_clash.html">
-    <div class="emoji">🦸</div>
-    <h2>Hero vs Villain</h2>
-    <p>Grow bigger</p>
-  </a>
+<div id="gameWrap" style="display:none;">
+  <div id="hud">
+    <span id="modeTitle"></span>
+    <span class="p1" id="s1">0</span>
+    <span class="p2" id="s2">0</span>
+    <span id="status">Running...</span>
+    <span id="timer">Time: --</span>
+  </div>
+  <canvas id="c" width="860" height="480"></canvas>
+  <div id="controls">
+    <button onclick="pauseToggle()">Pause</button>
+    <button onclick="restartMatch()">Restart</button>
+    <button onclick="backToMenu()">Menu</button>
+    <button id="recordBtn" onclick="toggleRecord()">🔴 Record</button>
+    <button id="musicBtn" onclick="toggleMusic()">🎵 Music</button>
+    <select id="sizeSel" onchange="resizeCanvas()">
+      <option value="640x360">Small</option>
+      <option value="860x480" selected>Medium</option>
+      <option value="1080x600">Large</option>
+    </select>
+  </div>
 </div>
 
-<footer>
-  Main game has everything: Names, Colors, Levels (max 10), Music, Sounds, Recording. Use Chrome on Android for recording.
-</footer>
+<div id="overlay">
+  <h2 id="ovTitle">Winner!</h2>
+  <p id="ovMsg"></p>
+  <button onclick="restartMatch()">Play Again</button>
+  <button onclick="backToMenu()">Menu</button>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W = canvas.width, H = canvas.height;
+let mode = 'ballfill';
+let running = false, paused = false;
+let timeLeft = 60;
+let lastTick = 0;
+let entities = [];
+let mults = [];
+let particles = [];
+let p1Name = 'P1', p2Name = 'P2', p1Color = '#ff3366', p2Color = '#33aaff';
+let score1 = 0, score2 = 0;
+let recording = false, mediaRecorder = null, chunks = [];
+let audioCtx = null, musicOn = false, musicTimer = null;
+
+function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+function tone(f, d=0.12, t='sine', v=0.12) {
+  if (!audioCtx) return;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = t; o.frequency.value = f;
+  g.gain.setValueAtTime(v, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + d);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + d);
+}
+function sfxMult() { tone(520,0.1); tone(780,0.08); }
+function sfxHit() { tone(160,0.1,'square',0.1); }
+function sfxWin() { tone(523,0.2); tone(659,0.2); tone(784,0.3); }
+function startMusic() {
+  if (musicTimer) clearInterval(musicTimer);
+  const ns = [220,277,330,440,330,277];
+  let i=0;
+  musicTimer = setInterval(()=>{ if(musicOn&&audioCtx) tone(ns[i++%ns.length],0.2,'triangle',0.05); }, 380);
+}
+function toggleMusic() {
+  initAudio(); musicOn = !musicOn;
+  document.getElementById('musicBtn').textContent = musicOn ? '🎵 ON' : '🎵 Music';
+  if (musicOn) startMusic(); else if (musicTimer) clearInterval(musicTimer);
+}
+
+function startMatch() {
+  p1Name = document.getElementById('n1').value || 'Player 1';
+  p2Name = document.getElementById('n2').value || 'Player 2';
+  p1Color = document.getElementById('c1').value;
+  p2Color = document.getElementById('c2').value;
+  mode = document.getElementById('modeSelect').value;
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('gameWrap').style.display = 'flex';
+  document.body.style.setProperty('--c1', p1Color);
+  document.body.style.setProperty('--c2', p2Color);
+  document.getElementById('modeTitle').textContent = mode.toUpperCase();
+  restartMatch();
+  initAudio();
+}
+
+function restartMatch() {
+  running = true; paused = false;
+  timeLeft = mode === 'orbitsurvival' || mode === 'missiledodge' ? 45 : 50;
+  score1 = score2 = 0;
+  entities = []; mults = []; particles = [];
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('status').textContent = 'Running...';
+  lastTick = performance.now();
+
+  if (mode === 'ballfill' || mode === 'ballspawn') {
+    entities.push(makeBall(W*0.28, H/2, p1Color, 1, p1Name));
+    entities.push(makeBall(W*0.72, H/2, p2Color, 2, p2Name));
+  } else if (mode === 'carcrash') {
+    entities.push(makeCar(W*0.25, H*0.4, p1Color, 1, p1Name));
+    entities.push(makeCar(W*0.75, H*0.6, p2Color, 2, p2Name));
+  } else {
+    entities.push(makeBall(W*0.3, H/2, p1Color, 1, p1Name));
+    entities.push(makeBall(W*0.7, H/2, p2Color, 2, p2Name));
+  }
+  spawnMult();
+  requestAnimationFrame(loop);
+}
+
+function makeBall(x,y,col,team,name) {
+  return { type:'ball', x,y, vx:(Math.random()-0.5)*3, vy:(Math.random()-0.5)*3, r:18, col, team, name, power:1, alive:true };
+}
+function makeCar(x,y,col,team,name) {
+  return { type:'car', x,y, vx:0, vy:0, ang: team===1?0:Math.PI, w:60, h:28, col, team, name, power:100, alive:true };
+}
+
+function spawnMult() {
+  if (!running || mults.length > 4) return;
+  const vals = [2,2,2,3,3,5,5,10];
+  mults.push({
+    x: 60 + Math.random()*(W-120),
+    y: 60 + Math.random()*(H-120),
+    v: vals[Math.floor(Math.random()*vals.length)],
+    life: 280
+  });
+  setTimeout(spawnMult, 1800 + Math.random()*1200);
+}
+
+function aiSeek(e) {
+  if (!e.alive) return;
+  let target = null, best = 1e9;
+  mults.forEach(m => {
+    const d = Math.hypot(m.x-e.x, m.y-e.y);
+    if (d < best) { best = d; target = m; }
+  });
+  if (target) {
+    const ang = Math.atan2(target.y - e.y, target.x - e.x);
+    if (e.type === 'ball') {
+      e.vx += Math.cos(ang) * 0.18;
+      e.vy += Math.sin(ang) * 0.18;
+    } else if (e.type === 'car') {
+      e.ang += (ang - e.ang) * 0.08;
+      e.vx += Math.cos(e.ang) * 0.35;
+      e.vy += Math.sin(e.ang) * 0.35;
+    }
+  } else {
+    if (Math.random()<0.03) {
+      e.vx += (Math.random()-0.5)*1.5;
+      e.vy += (Math.random()-0.5)*1.5;
+    }
+  }
+}
+
+function update() {
+  if (!running || paused) return;
+  const now = performance.now();
+  if (now - lastTick > 1000) {
+    timeLeft--; lastTick = now;
+    document.getElementById('timer').textContent = 'Time: ' + Math.max(0,timeLeft) + 's';
+    if (timeLeft <= 0) endByTime();
+  }
+
+  entities.forEach(e => {
+    if (!e.alive) return;
+    aiSeek(e);
+    e.vx *= 0.98; e.vy *= 0.98;
+    const sp = Math.hypot(e.vx, e.vy);
+    const max = e.type==='car' ? 6 : 7;
+    if (sp > max) { e.vx *= max/sp; e.vy *= max/sp; }
+    e.x += e.vx; e.y += e.vy;
+    const rr = e.r || e.w/2;
+    if (e.x < rr) { e.x = rr; e.vx = Math.abs(e.vx); }
+    if (e.x > W-rr) { e.x = W-rr; e.vx = -Math.abs(e.vx); }
+    if (e.y < rr) { e.y = rr; e.vy = Math.abs(e.vy); }
+    if (e.y > H-rr) { e.y = H-rr; e.vy = -Math.abs(e.vy); }
+  });
+
+  for (let i=0;i<entities.length;i++) {
+    for (let j=i+1;j<entities.length;j++) {
+      const a=entities[i], b=entities[j];
+      if (!a.alive || !b.alive || a.team===b.team) continue;
+      const d = Math.hypot(a.x-b.x, a.y-b.y);
+      const ra = a.r || a.w/2, rb = b.r || b.w/2;
+      if (d < ra+rb && d>0) {
+        if (mode === 'carcrash') {
+          const impact = Math.min(a.power, b.power) * 0.35 + 8;
+          a.power = Math.max(0, a.power - impact);
+          b.power = Math.max(0, b.power - impact);
+          sfxHit();
+          if (a.power <= 0) a.alive = false;
+          if (b.power <= 0) b.alive = false;
+          if (!a.alive || !b.alive) checkCarWinner();
+        } else {
+          const nx=(b.x-a.x)/d, ny=(b.y-a.y)/d;
+          const ov = (ra+rb-d)/2;
+          a.x -= nx*ov; b.x += nx*ov;
+          const rvx = a.vx-b.vx, rvy=a.vy-b.vy;
+          const sep = rvx*nx + rvy*ny;
+          if (sep<0) {
+            a.vx -= sep*nx*0.6; a.vy -= sep*ny*0.6;
+            b.vx += sep*nx*0.6; b.vy += sep*ny*0.6;
+          }
+          sfxHit();
+        }
+      }
+    }
+  }
+
+  mults = mults.filter(m => {
+    m.life--;
+    entities.forEach(e => {
+      if (!e.alive) return;
+      const d = Math.hypot(e.x-m.x, e.y-m.y);
+      const rr = e.r || e.w/2;
+      if (d < rr + 18) {
+        applyMult(e, m.v);
+        m.life = 0;
+        sfxMult();
+        for(let k=0;k<8;k++) particles.push({x:m.x,y:m.y,vx:(Math.random()-0.5)*8,vy:(Math.random()-0.5)*8,life:20,col:'#ff0'});
+      }
+    });
+    return m.life > 0;
+  });
+
+  particles = particles.filter(p => { p.x+=p.vx; p.y+=p.vy; p.life--; return p.life>0; });
+
+  if (mode === 'ballfill') {
+    score1 = entities.filter(e=>e.team===1).reduce((s,e)=>s+e.r*e.r,0);
+    score2 = entities.filter(e=>e.team===2).reduce((s,e)=>s+e.r*e.r,0);
+    const target = (W*H)*0.22;
+    if (score1 >= target) endMatch(1, 'filled the area first!');
+    if (score2 >= target) endMatch(2, 'filled the area first!');
+  } else if (mode === 'ballspawn') {
+    score1 = entities.filter(e=>e.team===1 && e.alive).length;
+    score2 = entities.filter(e=>e.team===2 && e.alive).length;
+    if (score1 >= 8) endMatch(1, 'spawned the most balls!');
+    if (score2 >= 8) endMatch(2, 'spawned the most balls!');
+  } else if (mode === 'crystalrace') {
+    if (score1 >= 120) endMatch(1, 'reached crystal target!');
+    if (score2 >= 120) endMatch(2, 'reached crystal target!');
+  } else if (mode === 'carcrash') {
+    score1 = Math.max(0, entities.find(e=>e.team===1)?.power || 0);
+    score2 = Math.max(0, entities.find(e=>e.team===2)?.power || 0);
+  }
+
+  updateHUD();
+}
+
+function applyMult(e, v) {
+  if (mode === 'ballfill') {
+    e.r = Math.min(e.r * (1 + v*0.12), 90);
+  } else if (mode === 'ballspawn') {
+    const count = Math.min(v, 4);
+    for (let i=0;i<count-1;i++) {
+      entities.push(makeBall(e.x+(Math.random()-0.5)*40, e.y+(Math.random()-0.5)*40, e.col, e.team, e.name));
+    }
+    e.r = Math.min(e.r + 2, 40);
+  } else if (mode === 'carcrash') {
+    e.power = Math.min(200, e.power + v * 8);
+  } else if (mode === 'crystalrace') {
+    if (e.team===1) score1 += v * 6; else score2 += v * 6;
+  } else {
+    e.r = Math.min(e.r + v, 50);
+    if (e.team===1) score1 += v*4; else score2 += v*4;
+  }
+}
+
+function checkCarWinner() {
+  const a = entities.find(e=>e.team===1);
+  const b = entities.find(e=>e.team===2);
+  if (!a.alive && !b.alive) endMatch(0, 'Both destroyed! Tie.');
+  else if (!a.alive) endMatch(2, 'survived with more power!');
+  else if (!b.alive) endMatch(1, 'survived with more power!');
+}
+
+function endByTime() {
+  if (score1 > score2) endMatch(1, 'higher score when time ended!');
+  else if (score2 > score1) endMatch(2, 'higher score when time ended!');
+  else endMatch(0, 'Exact tie!');
+}
+
+function endMatch(winner, reason) {
+  if (!running) return;
+  running = false;
+  sfxWin();
+  const ov = document.getElementById('overlay');
+  const title = document.getElementById('ovTitle');
+  const msg = document.getElementById('ovMsg');
+  if (winner === 1) { title.textContent = p1Name + ' WINS!'; title.style.color = p1Color; }
+  else if (winner === 2) { title.textContent = p2Name + ' WINS!'; title.style.color = p2Color; }
+  else { title.textContent = 'TIE!'; title.style.color = '#ff0'; }
+  msg.textContent = reason + ' | Score: ' + Math.round(score1) + ' - ' + Math.round(score2);
+  ov.style.display = 'flex';
+}
+
+function updateHUD() {
+  document.getElementById('s1').textContent = p1Name + ': ' + Math.round(score1);
+  document.getElementById('s2').textContent = p2Name + ': ' + Math.round(score2);
+  document.getElementById('status').textContent = paused ? 'Paused' : 'Running';
+}
+
+function draw() {
+  ctx.fillStyle = 'rgba(7,7,15,0.35)';
+  ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 4;
+  ctx.strokeRect(4,4,W-8,H-8);
+
+  mults.forEach(m => {
+    ctx.save();
+    ctx.font = 'bold 22px system-ui';
+    ctx.fillStyle = m.v>=5 ? '#ff0' : '#fff';
+    ctx.shadowBlur = 12; ctx.shadowColor = '#ff0';
+    ctx.textAlign = 'center';
+    ctx.fillText(m.v+'x', m.x, m.y);
+    ctx.restore();
+  });
+
+  particles.forEach(p => {
+    ctx.globalAlpha = p.life/20;
+    ctx.fillStyle = p.col;
+    ctx.beginPath(); ctx.arc(p.x,p.y,3,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+
+  entities.forEach(e => {
+    if (!e.alive) return;
+    ctx.save();
+    ctx.shadowBlur = 15; ctx.shadowColor = e.col;
+    if (e.type === 'ball') {
+      const g = ctx.createRadialGradient(e.x,e.y,0,e.x,e.y,e.r);
+      g.addColorStop(0,'#fff'); g.addColorStop(0.4,e.col); g.addColorStop(1,e.col+'00');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(e.x,e.y,e.r,0,Math.PI*2); ctx.fill();
+    } else if (e.type === 'car') {
+      ctx.translate(e.x,e.y); ctx.rotate(e.ang);
+      ctx.fillStyle = e.col;
+      ctx.fillRect(-e.w/2,-e.h/2,e.w,e.h);
+      ctx.fillStyle = '#88ccff';
+      ctx.fillRect(-5,-e.h/2+3,18,e.h-6);
+    }
+    ctx.restore();
+    ctx.fillStyle = '#fff';
+    ctx.font = '11px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText(e.name, e.x, e.y - (e.r||20) - 6);
+    if (e.type==='car') {
+      ctx.fillText(Math.round(e.power)+'p', e.x, e.y + 22);
+    }
+  });
+}
+
+function loop(t) {
+  update();
+  draw();
+  if (running) requestAnimationFrame(loop);
+}
+
+function pauseToggle() { paused = !paused; updateHUD(); }
+function backToMenu() {
+  running = false;
+  document.getElementById('gameWrap').style.display = 'none';
+  document.getElementById('setup').style.display = 'flex';
+  document.getElementById('overlay').style.display = 'none';
+}
+
+function resizeCanvas() {
+  const [w,h] = document.getElementById('sizeSel').value.split('x').map(Number);
+  canvas.width = w; canvas.height = h;
+  W = w; H = h;
+  if (running) restartMatch();
+}
+
+async function toggleRecord() {
+  const btn = document.getElementById('recordBtn');
+  if (!recording) {
+    try {
+      const stream = canvas.captureStream(30);
+      mediaRecorder = new MediaRecorder(stream, {mimeType:'video/webm'});
+      chunks = [];
+      mediaRecorder.ondataavailable = e => { if(e.data.size) chunks.push(e.data); };
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, {type:'video/webm'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = mode + '_match.webm';
+        a.click();
+      };
+      mediaRecorder.start();
+      recording = true;
+      btn.textContent = '⏹️ Stop';
+    } catch(e) { alert('Recording best in Chrome/Android'); }
+  } else {
+    mediaRecorder.stop();
+    recording = false;
+    btn.textContent = '🔴 Record';
+  }
+}
+</script>
 </body>
 </html>
