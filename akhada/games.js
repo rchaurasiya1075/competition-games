@@ -121,14 +121,14 @@ const BUILD = {
         }
         for (let p = 0; p < 2; p++) {
           const me = b[p];
-          const want = 0.62 + nerve(env, p) * 0.12;
+          const want = 1.05 + nerve(env, p) * 0.18;
           const sp = Math.hypot(me.vx, me.vy) || 1;
           me.vx *= want / sp;
           me.vy *= want / sp;
           me.x += me.vx * dt;
           me.y += me.vy * dt;
           const d = Math.hypot(me.x, me.y) || 1;
-          if (d > 0.74) {
+          if (d > 0.9) {
             const nx = me.x / d;
             const ny = me.y / d;
             const v = me.vx * nx + me.vy * ny;
@@ -141,12 +141,12 @@ const BUILD = {
             const slip = (Math.random() - 0.5) * 0.16;
             me.vx += -ny * slip;
             me.vy += nx * slip;
-            me.x = nx * 0.74;
-            me.y = ny * 0.74;
+            me.x = nx * 0.9;
+            me.y = ny * 0.9;
           }
           trail[p].push({ x: me.x, y: me.y });
           if (trail[p].length > 7) trail[p].shift();
-          if (magic && (me.x - magic.x) ** 2 + (me.y - magic.y) ** 2 < 0.03) {
+          if (magic && (me.x - magic.x) ** 2 + (me.y - magic.y) ** 2 < 0.055) {
             power[p] = 4;
             ammo[p] = 2;
             gunCool[p] = 0.45;
@@ -155,7 +155,7 @@ const BUILD = {
             burst(me.x, me.y, "#ffe08a");
             env.sfx?.pop?.();
           }
-          if (heal && (me.x - heal.x) ** 2 + (me.y - heal.y) ** 2 < 0.03) {
+          if (heal && (me.x - heal.x) ** 2 + (me.y - heal.y) ** 2 < 0.055) {
             hp[p] = Math.min(maxHp, hp[p] + 1);
             heal = null;
             healAt = clock + 6;
@@ -167,7 +167,7 @@ const BUILD = {
             if (gunCool[p] <= 0) {
               const foe = b[1 - p];
               const aim = Math.atan2(foe.y - me.y, foe.x - me.x) + (Math.random() - 0.5) * 0.35;
-              const spd = 0.72;
+              const spd = 1.15;
               shots.push({ x: me.x, y: me.y, vx: Math.cos(aim) * spd, vy: Math.sin(aim) * spd, p, life: 1.5 });
               ammo[p] -= 1;
               gunCool[p] = 1.05;
@@ -205,8 +205,8 @@ const BUILD = {
           const ax = foe.x - s.x;
           const ay = foe.y - s.y;
           const al = Math.hypot(ax, ay) || 1;
-          s.vx += (ax / al) * dt * 0.9;
-          s.vy += (ay / al) * dt * 0.9;
+          s.vx += (ax / al) * dt * 1.35;
+          s.vy += (ay / al) * dt * 1.35;
           const ssp = Math.hypot(s.vx, s.vy) || 1;
           if (ssp > 0.9) {
             s.vx *= 0.9 / ssp;
@@ -215,7 +215,7 @@ const BUILD = {
           s.x += s.vx * dt;
           s.y += s.vy * dt;
           s.life -= dt;
-          if ((s.x - foe.x) ** 2 + (s.y - foe.y) ** 2 < 0.028) {
+          if ((s.x - foe.x) ** 2 + (s.y - foe.y) ** 2 < 0.04) {
             hp[1 - s.p] = Math.max(0, hp[1 - s.p] - 1);
             flash = 0.25;
             burst(foe.x, foe.y, col[1 - s.p]);
@@ -224,7 +224,7 @@ const BUILD = {
             continue;
           }
           const sd = Math.hypot(s.x, s.y) || 1;
-          if (sd > 0.78) {
+          if (sd > 0.93) {
             const nx = s.x / sd;
             const ny = s.y / sd;
             const v = s.vx * nx + s.vy * ny;
@@ -232,8 +232,8 @@ const BUILD = {
               s.vx -= 2 * v * nx;
               s.vy -= 2 * v * ny;
             }
-            s.x = nx * 0.78;
-            s.y = ny * 0.78;
+            s.x = nx * 0.93;
+            s.y = ny * 0.93;
           }
           if (s.life <= 0) shots.splice(i, 1);
         }
@@ -264,9 +264,10 @@ const BUILD = {
           heartIcon(ctx, w * 0.22 - 72 + i * 15, h * 0.1, i < hp[0], col[0]);
           heartIcon(ctx, w * 0.78 - 72 + i * 15, h * 0.1, i < hp[1], col[1]);
         }
+        const top = Math.min(h * 0.16, 92);
+        const R = Math.min(w * 0.5 - 2, (h - top - 4) / 2);
         const cx = w / 2;
-        const cy = h * 0.56;
-        const R = Math.min(w * 0.49, h * 0.44);
+        const cy = top + R;
         ctx.strokeStyle = "rgba(120,160,210,0.16)";
         ctx.lineWidth = 1;
         for (let i = 1; i <= 3; i++) {
