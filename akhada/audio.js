@@ -9,6 +9,7 @@ export function createAudio() {
   let timer = 0;
   let next = 0;
   let lastTap = 0;
+  let lastPop = 0;
 
   function ensure() {
     if (!ctx) {
@@ -176,6 +177,15 @@ export function createAudio() {
       if (now - lastTap < 0.045) return;
       lastTap = now;
       noise(sfx, now, 0.04, 0.05, 1200);
+    },
+    pop() {
+      if (!sfxOk()) return;
+      const now = ctx.currentTime;
+      if (now - lastPop < 0.028) return;
+      lastPop = now;
+      const f = 520 + Math.random() * 700;
+      tone(sfx, now, f, 0.06, "sine", 0.14);
+      tone(sfx, now, f * 1.5, 0.04, "triangle", 0.04);
     },
     hit() {
       if (!sfxOk()) return;
