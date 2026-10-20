@@ -3,6 +3,7 @@ import { bar, drawBackdrop, drawFighter, fx, roundRect, shortName, text } from "
 export const LEVELS = ["Mela", "Kasba", "Zila", "Rajya", "Rashtriya"];
 
 export const GAMES = [
+  { id: "takkar", name: "Takkar", line: "Do gend. Sirf takkar se ank. Jo tez takraye, wahi aage." },
   { id: "rassi", name: "Rassi Khich", line: "Dono taraf khicho. Rassi apne kone tak le jao." },
   { id: "kusti", name: "Kusti", line: "Sahi mauke par pakad. Pehle paanch pakad." },
   { id: "bahu", name: "Bahu Bali", line: "Haath dabao, lekin thak mat jaana." },
@@ -22,8 +23,6 @@ export const GAMES = [
   { id: "gada", name: "Gada Gola", line: "Chain ki gada. Jiski jaan pehle khatam, woh haara." },
   { id: "pees", name: "Gend Pesai", line: "Do roller. Zyada gend peesne wala jeete." },
   { id: "rage", name: "Rage Gola", line: "Atom chhuo, tabhi goli. Dil sirf vaar par kate." },
-  { id: "billi", name: "Billi Crusher", line: "Pahiya billi uthata hai. Zyada uthane wala jeete." },
-  { id: "jor", name: "Jor Lapak", line: "Deewar ya hari lakeer se gend badhe. Zyada bharne wala jeete." },
 ];
 
 function skillOf(level) {
@@ -66,6 +65,174 @@ function puff(ctx, x, y, t) {
 }
 
 const BUILD = {
+  takkar(env) {
+    const col = [env.p1.cloth || "#ff4b6e", env.p2.cloth || "#3ecbff"];
+    const b = [
+      { x: -0.46, y: 0.12, vx: 0.22, vy: -0.48 },
+      { x: 0.44, y: -0.16, vx: -0.18, vy: 0.5 },
+    ];
+    const score = [0, 0];
+    const trail = [[], []];
+    const bits = [];
+    let cool = 0.4;
+    let flash = 0;
+    let clock = 0;
+    let nudged = false;
+    const need = 7;
+
+    return {
+      controls: "mash",
+      verbs: ["Takkar", "Takkar"],
+      update(dt) {
+        cool = Math.max(0, cool - dt);
+        flash = Math.max(0, flash - dt);
+        clock += dt;
+        if (!nudged && clock > 6 && score[0] + score[1] === 0) {
+          nudged = true;
+          for (let p = 0; p < 2; p++) {
+            const d = Math.hypot(b[p].x, b[p].y) || 1;
+            b[p].vx = -b[p].x / d * 0.7;
+            b[p].vy = -b[p].y / d * 0.7;
+          }
+        }
+        for (let p = 0; p < 2; p++) {
+          const me = b[p];
+          const want = 0.62 + nerve(env, p) * 0.12;
+          const sp = Math.hypot(me.vx, me.vy) || 1;
+          me.vx *= want / sp;
+          me.vy *= want / sp;
+          me.x += me.vx * dt;
+          me.y += me.vy * dt;
+          const d = Math.hypot(me.x, me.y) || 1;
+          if (d > 0.74) {
+            const nx = me.x / d;
+            const ny = me.y / d;
+            const v = me.vx * nx + me.vy * ny;
+            if (v > 0) {
+              me.vx -= 2 * v * nx;
+              me.vy -= 2 * v * ny;
+            }
+            me.vx -= nx * 0.28;
+            me.vy -= ny * 0.28;
+            const slip = (Math.random() - 0.5) * 0.16;
+            me.vx += -ny * slip;
+            me.vy += nx * slip;
+            me.x = nx * 0.74;
+            me.y = ny * 0.74;
+          }
+          trail[p].push({ x: me.x, y: me.y });
+          if (trail[p].length > 7) trail[p].shift();
+        }
+        const dx = b[1].x - b[0].x;
+        const dy = b[1].y - b[0].y;
+        const dist = Math.hypot(dx, dy) || 0.001;
+        if (dist < 0.2) {
+          const nx = dx / dist;
+          const ny = dy / dist;
+          const s0 = Math.hypot(b[0].vx, b[0].vy);
+          const s1 = Math.hypot(b[1].vx, b[1].vy);
+          const rel = (b[1].vx - b[0].vx) * nx + (b[1].vy - b[0].vy) * ny;
+          if (rel < 0) {
+            b[0].vx += rel * nx;
+            b[0].vy += rel * ny;
+            b[1].vx -= rel * nx;
+            b[1].vy -= rel * ny;
+            if (cool <= 0) {
+              const win = s0 === s1 ? (Math.random() < 0.5 ? 0 : 1) : s0 > s1 ? 0 : 1;
+              score[win] += 1;
+              cool = 0.7;
+              flash = 0.28;
+              env.sfx?.pop?.();
+              fx.punch(0.55);
+              const mx = (b[0].x + b[1].x) / 2;
+              const my = (b[0].y + b[1].y) / 2;
+              for (let i = 0; i < 10; i++) {
+                const a = Math.random() * Math.PI * 2;
+                const sp = 0.2 + Math.random() * 0.45;
+                bits.push({ x: mx, y: my, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.45, color: col[win] });
+              }
+            }
+          }
+          const push = (0.2 - dist) * 0.55;
+          b[0].x -= nx * push;
+          b[0].y -= ny * push;
+          b[1].x += nx * push;
+          b[1].y += ny * push;
+        }
+        for (let i = bits.length - 1; i >= 0; i--) {
+          bits[i].x += bits[i].vx * dt;
+          bits[i].y += bits[i].vy * dt;
+          bits[i].life -= dt;
+          if (bits[i].life <= 0) bits.splice(i, 1);
+        }
+        if (((score[0] >= need || score[1] >= need) && score[0] !== score[1]) || (clock > 32 && score[0] !== score[1])) {
+          return { winner: score[0] > score[1] ? 0 : 1, reason: "Tez takkar" };
+        }
+        return null;
+      },
+      hud() {
+        return `${score[0]} – ${score[1]} takkar`;
+      },
+      draw(ctx, w, h) {
+        ctx.fillStyle = "#070910";
+        ctx.fillRect(0, 0, w, h);
+        const n0 = shortName(env.names[0]);
+        const n1 = shortName(env.names[1]);
+        text(ctx, n0, w * 0.24, h * 0.1, { size: 15, color: col[0], weight: 800 });
+        text(ctx, n1, w * 0.76, h * 0.1, { size: 15, color: col[1], weight: 800 });
+        text(ctx, `${score[0]}`, w * 0.24, h * 0.17, { size: 36, color: "#f7f4ea", weight: 800 });
+        text(ctx, `${score[1]}`, w * 0.76, h * 0.17, { size: 36, color: "#f7f4ea", weight: 800 });
+        const cx = w / 2;
+        const cy = h * 0.56;
+        const R = Math.min(w * 0.4, h * 0.3);
+        ctx.strokeStyle = "rgba(120,160,210,0.18)";
+        ctx.lineWidth = 1;
+        for (let i = 1; i <= 3; i++) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, (R * i) / 3, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = flash > 0 ? "#fff6d0" : "rgba(244,246,252,0.9)";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        ctx.stroke();
+        const put = (x, y) => [cx + x * R, cy + y * R];
+        for (const bit of bits) {
+          const [px, py] = put(bit.x, bit.y);
+          ctx.globalAlpha = Math.max(0, bit.life * 2);
+          ctx.fillStyle = bit.color;
+          ctx.beginPath();
+          ctx.arc(px, py, 3 + bit.life * 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        for (let p = 0; p < 2; p++) {
+          trail[p].forEach((t, i) => {
+            const [px, py] = put(t.x, t.y);
+            ctx.globalAlpha = (i + 1) / trail[p].length * 0.35;
+            ctx.fillStyle = col[p];
+            ctx.beginPath();
+            ctx.arc(px, py, 4, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        }
+        ctx.globalAlpha = 1;
+        for (let p = 0; p < 2; p++) {
+          const [px, py] = put(b[p].x, b[p].y);
+          const rr = Math.max(18, R * 0.11);
+          rageFace(ctx, px, py, rr, col[p], score[p] < score[1 - p]);
+          ctx.fillStyle = "rgba(6,8,16,0.78)";
+          const label = p === 0 ? n0 : n1;
+          const tw = Math.min(108, label.length * 7 + 16);
+          roundRect(ctx, px - tw / 2, py + rr + 6, tw, 16, 8);
+          ctx.fill();
+          text(ctx, label, px, py + rr + 18, { size: 11, color: col[p], weight: 700 });
+        }
+      },
+    };
+  },
+
   rassi(env) {
     let pos = 0;
     let vel = 0;
