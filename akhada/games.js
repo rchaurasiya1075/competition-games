@@ -22,6 +22,8 @@ export const GAMES = [
   { id: "gada", name: "Gada Gola", line: "Chain ki gada. Jiski jaan pehle khatam, woh haara." },
   { id: "pees", name: "Gend Pesai", line: "Do roller. Zyada gend peesne wala jeete." },
   { id: "rage", name: "Rage Gola", line: "Atom chhuo, tabhi goli. Dil sirf vaar par kate." },
+  { id: "billi", name: "Billi Crusher", line: "Ghere ki billiyan. Jiski baazu zyada kuchle, wahi jeete." },
+  { id: "jor", name: "Jor Lapak", line: "Deewar par gend badhe. Zyada bachi gend wala jeete." },
 ];
 
 function skillOf(level) {
@@ -2238,7 +2240,332 @@ const BUILD = {
       },
     };
   },
+
+  billi(env) {
+    const score = [0, 0];
+    const cats = [];
+    for (let i = 0; i < 46; i++) {
+      const a = Math.PI * 0.2 + Math.random() * Math.PI * 0.6;
+      const r = 0.12 + Math.random() * 0.68;
+      cats.push({
+        x: Math.cos(a) * r,
+        y: Math.sin(a) * r,
+        vx: (Math.random() - 0.5) * 0.2,
+        vy: (Math.random() - 0.5) * 0.12,
+      });
+    }
+    const ang = [-Math.PI / 2, -Math.PI / 2];
+    const spin = [1.15 + nerve(env, 0) * 0.1, -(1.08 + nerve(env, 1) * 0.1)];
+    const armCool = [0.4, 0.15];
+    const col = [env.p1.cloth || "#7ecbff", env.p2.cloth || "#ffb703"];
+    const bits = [];
+    let clock = 0;
+
+    return {
+      controls: "mash",
+      verbs: ["Ghum", "Ghum"],
+      update(dt) {
+        clock += dt;
+        for (let p = 0; p < 2; p++) {
+          ang[p] += spin[p] * dt;
+          armCool[p] = Math.max(0, armCool[p] - dt);
+        }
+        for (let i = cats.length - 1; i >= 0; i--) {
+          const c = cats[i];
+          c.vy += 0.72 * dt;
+          c.vx *= 0.997;
+          c.vy *= 0.997;
+          c.x += c.vx * dt;
+          c.y += c.vy * dt;
+          const d = Math.hypot(c.x, c.y) || 1;
+          if (d > 0.84) {
+            const nx = c.x / d;
+            const ny = c.y / d;
+            const v = c.vx * nx + c.vy * ny;
+            if (v > 0) {
+              c.vx -= 1.65 * v * nx;
+              c.vy -= 1.65 * v * ny;
+            }
+            c.x = nx * 0.84;
+            c.y = ny * 0.84;
+          }
+          let hit = -1;
+          let best = 0.07;
+          for (let p = 0; p < 2; p++) {
+            const ax = Math.cos(ang[p]) * 0.9;
+            const ay = Math.sin(ang[p]) * 0.9;
+            const l2 = ax * ax + ay * ay;
+            const t = Math.max(0, Math.min(1, (c.x * ax + c.y * ay) / l2));
+            const dist = Math.hypot(c.x - ax * t, c.y - ay * t);
+            if (dist < best && t > 0.12) {
+              best = dist;
+              hit = p;
+            }
+          }
+          if (hit >= 0 && armCool[hit] <= 0) {
+            score[hit] += 1;
+            armCool[hit] = 0.16;
+            for (const o of cats) {
+              if (o === c) continue;
+              const ox = o.x - c.x;
+              const oy = o.y - c.y;
+              const od = Math.hypot(ox, oy) || 1;
+              if (od < 0.16) {
+                o.vx += (ox / od) * 0.28;
+                o.vy += (oy / od) * 0.28;
+              }
+            }
+            bits.push({ x: c.x, y: c.y, vx: Math.cos(ang[hit]) * 0.4, vy: Math.sin(ang[hit]) * 0.4, life: 0.35, color: col[hit] });
+            env.sfx?.hit?.();
+            cats.splice(i, 1);
+          }
+        }
+        for (let i = bits.length - 1; i >= 0; i--) {
+          bits[i].life -= dt;
+          bits[i].x += bits[i].vx * dt;
+          bits[i].y += bits[i].vy * dt;
+          if (bits[i].life <= 0) bits.splice(i, 1);
+        }
+        if (cats.length === 0 && score[0] !== score[1]) {
+          return { winner: score[0] > score[1] ? 0 : 1, reason: "Zyada billi kuchli" };
+        }
+        return null;
+      },
+      hud() {
+        return `${score[0]} – ${score[1]} billi`;
+      },
+      draw(ctx, w, h) {
+        ctx.fillStyle = "#070b16";
+        ctx.fillRect(0, 0, w, h);
+        text(ctx, shortName(env.names[0]), w * 0.22, h * 0.1, { size: 16, color: col[0], weight: 800 });
+        text(ctx, shortName(env.names[1]), w * 0.78, h * 0.1, { size: 16, color: col[1], weight: 800 });
+        const cx = w / 2;
+        const cy = h * 0.48;
+        const R = Math.min(w * 0.4, h * 0.3);
+        ctx.strokeStyle = "rgba(150,190,255,0.35)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = "#9ecbff";
+        for (let i = 0; i < 28; i++) {
+          const a = (i / 28) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.arc(cx + Math.cos(a) * R, cy + Math.sin(a) * R, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        const put = (x, y) => [cx + x * R, cy + y * R];
+        for (const c of cats) {
+          const [px, py] = put(c.x, c.y);
+          miniCat(ctx, px, py, 5.5);
+        }
+        for (const bit of bits) {
+          const [px, py] = put(bit.x, bit.y);
+          ctx.globalAlpha = Math.max(0, bit.life * 2);
+          ctx.fillStyle = bit.color;
+          ctx.beginPath();
+          ctx.arc(px, py, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        for (let p = 0; p < 2; p++) {
+          ctx.strokeStyle = col[p];
+          ctx.lineWidth = 4;
+          ctx.shadowColor = col[p];
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + Math.cos(ang[p]) * R * 0.92, cy + Math.sin(ang[p]) * R * 0.92);
+          ctx.stroke();
+        }
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#c5ceda";
+        ctx.beginPath();
+        ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#1c2433";
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * Math.PI * 2 + 0.4;
+          ctx.beginPath();
+          ctx.arc(cx + Math.cos(a) * 6, cy + Math.sin(a) * 6, 1.6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        text(ctx, `${score[0]}`, w * 0.28, h * 0.86, { size: 36, color: col[0], weight: 800 });
+        text(ctx, `${score[1]}`, w * 0.72, h * 0.86, { size: 36, color: col[1], weight: 800 });
+      },
+    };
+  },
+
+  jor(env) {
+    const col = [env.p1.cloth || "#ff4d6a", env.p2.cloth || "#3ee0ff"];
+    const balls = [
+      { x: -0.25, y: -0.35, vx: 0.42, vy: 0.22, p: 0, cool: 0.2 },
+      { x: 0.28, y: -0.3, vx: -0.38, vy: 0.28, p: 1, cool: 0.35 },
+    ];
+    let clock = 0;
+    let spark = null;
+    const cap = 18;
+
+    function count(p) {
+      let n = 0;
+      for (const b of balls) if (b.p === p) n += 1;
+      return n;
+    }
+
+    return {
+      controls: "mash",
+      verbs: ["Lapak", "Lapak"],
+      update(dt) {
+        clock += dt;
+        const gapW = Math.min(0.85, 0.34 + clock * 0.012);
+        const gap = Math.PI / 2;
+        for (let i = balls.length - 1; i >= 0; i--) {
+          const b = balls[i];
+          b.cool -= dt;
+          const sp = Math.hypot(b.vx, b.vy) || 1;
+          const want = 0.55 + nerve(env, b.p) * 0.08;
+          if (sp < want) {
+            b.vx *= want / sp;
+            b.vy *= want / sp;
+          } else if (sp > 1.05) {
+            b.vx *= 1.05 / sp;
+            b.vy *= 1.05 / sp;
+          }
+          b.x += b.vx * dt;
+          b.y += b.vy * dt;
+          const d = Math.hypot(b.x, b.y) || 1;
+          if (d > 0.88) {
+            let a = Math.atan2(b.y, b.x) - gap;
+            while (a > Math.PI) a -= Math.PI * 2;
+            while (a < -Math.PI) a += Math.PI * 2;
+            if (Math.abs(a) < gapW / 2) {
+              balls.splice(i, 1);
+              env.sfx?.miss?.();
+              continue;
+            }
+            const nx = b.x / d;
+            const ny = b.y / d;
+            const v = b.vx * nx + b.vy * ny;
+            if (v > 0) {
+              b.vx -= 2 * v * nx;
+              b.vy -= 2 * v * ny;
+            }
+            b.x = nx * 0.88;
+            b.y = ny * 0.88;
+            if (b.cool <= 0 && count(b.p) < cap && Math.random() < 0.8) {
+              const jx = (Math.random() - 0.5) * 0.4;
+              const jy = 0.15 + Math.random() * 0.35;
+              balls.push({ x: b.x * 0.9, y: b.y * 0.9, vx: -b.vx * 0.6 + jx, vy: jy, p: b.p, cool: 0.7 });
+              b.cool = 0.65;
+              spark = { x: b.x, y: b.y, x2: b.x * 0.55, y2: b.y * 0.55, life: 0.25 };
+              env.sfx?.tap?.();
+            }
+          }
+        }
+        for (let i = 0; i < balls.length; i++) {
+          for (let j = i + 1; j < balls.length; j++) {
+            const a = balls[i];
+            const b = balls[j];
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const dist = Math.hypot(dx, dy) || 0.001;
+            if (dist < 0.07) {
+              const nx = dx / dist;
+              const ny = dy / dist;
+              const rel = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+              if (rel < 0) {
+                a.vx += rel * nx;
+                a.vy += rel * ny;
+                b.vx -= rel * nx;
+                b.vy -= rel * ny;
+              }
+              const push = (0.07 - dist) * 0.5;
+              a.x -= nx * push;
+              a.y -= ny * push;
+              b.x += nx * push;
+              b.y += ny * push;
+            }
+          }
+        }
+        if (spark) {
+          spark.life -= dt;
+          if (spark.life <= 0) spark = null;
+        }
+        const n0 = count(0);
+        const n1 = count(1);
+        if ((n0 >= 14 || n1 >= 14) && n0 !== n1) return { winner: n0 > n1 ? 0 : 1, reason: "Ghera bhar diya" };
+        if (clock > 5 && (n0 === 0 || n1 === 0) && n0 !== n1) return { winner: n0 > n1 ? 0 : 1, reason: "Zyada gend bachi" };
+        if (clock > 24 && n0 !== n1) return { winner: n0 > n1 ? 0 : 1, reason: "Zyada gend bachi" };
+        return null;
+      },
+      hud() {
+        return `${count(0)} – ${count(1)} gend`;
+      },
+      draw(ctx, w, h) {
+        ctx.fillStyle = "#050208";
+        ctx.fillRect(0, 0, w, h);
+        const n0 = shortName(env.names[0]);
+        const n1 = shortName(env.names[1]);
+        text(ctx, `${n0}  ${count(0)}`, w * 0.28, h * 0.12, { size: 16, color: col[0], weight: 800 });
+        text(ctx, `${count(1)}  ${n1}`, w * 0.72, h * 0.12, { size: 16, color: col[1], weight: 800 });
+        const cx = w / 2;
+        const cy = h * 0.52;
+        const R = Math.min(w * 0.4, h * 0.3);
+        const gapW = Math.min(0.85, 0.34 + clock * 0.012);
+        const gap = Math.PI / 2;
+        ctx.strokeStyle = "#ff3ec8";
+        ctx.lineWidth = 7;
+        ctx.shadowColor = "#ff3ec8";
+        ctx.shadowBlur = 16;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, gap + gapW / 2, gap - gapW / 2 + Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        const put = (x, y) => [cx + x * R, cy + y * R];
+        if (spark) {
+          const [x1, y1] = put(spark.x, spark.y);
+          const [x2, y2] = put(spark.x2, spark.y2);
+          ctx.strokeStyle = "#b6ff3c";
+          ctx.lineWidth = 3;
+          ctx.globalAlpha = Math.max(0, spark.life * 3);
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+        for (const b of balls) {
+          const [px, py] = put(b.x, b.y);
+          ctx.fillStyle = col[b.p];
+          ctx.shadowColor = col[b.p];
+          ctx.shadowBlur = 12;
+          ctx.beginPath();
+          ctx.arc(px, py, 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+      },
+    };
+  },
 };
+
+function miniCat(ctx, x, y, s) {
+  ctx.fillStyle = "#f7f9ff";
+  ctx.beginPath();
+  ctx.arc(x, y, s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x - s * 0.75, y - s * 0.15);
+  ctx.lineTo(x - s * 0.4, y - s * 1.2);
+  ctx.lineTo(x - s * 0.05, y - s * 0.4);
+  ctx.moveTo(x + s * 0.75, y - s * 0.15);
+  ctx.lineTo(x + s * 0.4, y - s * 1.2);
+  ctx.lineTo(x + s * 0.05, y - s * 0.4);
+  ctx.fill();
+  ctx.fillStyle = "#1b2030";
+  ctx.fillRect(x - s * 0.32, y - s * 0.05, s * 0.16, s * 0.18);
+  ctx.fillRect(x + s * 0.14, y - s * 0.05, s * 0.16, s * 0.18);
+}
 
 function labelShot(s) {
   if (s === "six") return "CHHAKKA";
