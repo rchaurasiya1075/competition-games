@@ -3,7 +3,7 @@ import { bar, drawBackdrop, drawFighter, fx, roundRect, shortName, text } from "
 export const LEVELS = ["Mela", "Kasba", "Zila", "Rajya", "Rashtriya"];
 
 export const GAMES = [
-  { id: "takkar", name: "Takkar", line: "Do gend. Sirf takkar se ank. Jo tez takraye, wahi aage." },
+  { id: "takkar", name: "Takkar", line: "Magic se vaar. Jaan lo to badhe. Jiski jaan khatam, wahi haara." },
   { id: "rassi", name: "Rassi Khich", line: "Dono taraf khicho. Rassi apne kone tak le jao." },
   { id: "kusti", name: "Kusti", line: "Sahi mauke par pakad. Pehle paanch pakad." },
   { id: "bahu", name: "Bahu Bali", line: "Haath dabao, lekin thak mat jaana." },
@@ -71,14 +71,30 @@ const BUILD = {
       { x: -0.46, y: 0.12, vx: 0.22, vy: -0.48 },
       { x: 0.44, y: -0.16, vx: -0.18, vy: 0.5 },
     ];
-    const score = [0, 0];
+    const hp = [8, 8];
+    const maxHp = 10;
     const trail = [[], []];
     const bits = [];
+    const shots = [];
+    const power = [0, 0];
+    const ammo = [0, 0];
+    const gunCool = [0, 0];
+    let magic = null;
+    let heal = null;
+    let magicAt = 1.2;
+    let healAt = 3.2;
     let cool = 0.4;
     let flash = 0;
     let clock = 0;
     let nudged = false;
-    const need = 7;
+
+    function burst(x, y, color) {
+      for (let i = 0; i < 8; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = 0.18 + Math.random() * 0.4;
+        bits.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.4, color });
+      }
+    }
 
     return {
       controls: "mash",
@@ -87,12 +103,20 @@ const BUILD = {
         cool = Math.max(0, cool - dt);
         flash = Math.max(0, flash - dt);
         clock += dt;
-        if (!nudged && clock > 6 && score[0] + score[1] === 0) {
+        if (!magic && clock >= magicAt) {
+          const a = Math.random() * Math.PI * 2;
+          magic = { x: Math.cos(a) * 0.12, y: Math.sin(a) * 0.12 };
+        }
+        if (!heal && clock >= healAt) {
+          const a = Math.random() * Math.PI * 2;
+          heal = { x: Math.cos(a) * 0.42, y: Math.sin(a) * 0.42 };
+        }
+        if (!nudged && clock > 6 && hp[0] === 8 && hp[1] === 8 && !power[0] && !power[1]) {
           nudged = true;
           for (let p = 0; p < 2; p++) {
             const d = Math.hypot(b[p].x, b[p].y) || 1;
-            b[p].vx = -b[p].x / d * 0.7;
-            b[p].vy = -b[p].y / d * 0.7;
+            b[p].vx = (-b[p].x / d) * 0.7;
+            b[p].vy = (-b[p].y / d) * 0.7;
           }
         }
         for (let p = 0; p < 2; p++) {
@@ -122,6 +146,34 @@ const BUILD = {
           }
           trail[p].push({ x: me.x, y: me.y });
           if (trail[p].length > 7) trail[p].shift();
+          if (magic && (me.x - magic.x) ** 2 + (me.y - magic.y) ** 2 < 0.03) {
+            power[p] = 4;
+            ammo[p] = 2;
+            gunCool[p] = 0.45;
+            magic = null;
+            magicAt = clock + 3.2;
+            burst(me.x, me.y, "#ffe08a");
+            env.sfx?.pop?.();
+          }
+          if (heal && (me.x - heal.x) ** 2 + (me.y - heal.y) ** 2 < 0.03) {
+            hp[p] = Math.min(maxHp, hp[p] + 1);
+            heal = null;
+            healAt = clock + 6;
+            burst(me.x, me.y, "#7dffb3");
+            env.sfx?.beep?.();
+          }
+          if (ammo[p] > 0) {
+            gunCool[p] -= dt;
+            if (gunCool[p] <= 0) {
+              const foe = b[1 - p];
+              const aim = Math.atan2(foe.y - me.y, foe.x - me.x) + (Math.random() - 0.5) * 0.35;
+              const spd = 0.72;
+              shots.push({ x: me.x, y: me.y, vx: Math.cos(aim) * spd, vy: Math.sin(aim) * spd, p, life: 1.5 });
+              ammo[p] -= 1;
+              gunCool[p] = 1.05;
+              if (ammo[p] <= 0) power[p] = 0;
+            }
+          } else power[p] = 0;
         }
         const dx = b[1].x - b[0].x;
         const dy = b[1].y - b[0].y;
@@ -129,8 +181,6 @@ const BUILD = {
         if (dist < 0.2) {
           const nx = dx / dist;
           const ny = dy / dist;
-          const s0 = Math.hypot(b[0].vx, b[0].vy);
-          const s1 = Math.hypot(b[1].vx, b[1].vy);
           const rel = (b[1].vx - b[0].vx) * nx + (b[1].vy - b[0].vy) * ny;
           if (rel < 0) {
             b[0].vx += rel * nx;
@@ -138,19 +188,9 @@ const BUILD = {
             b[1].vx -= rel * nx;
             b[1].vy -= rel * ny;
             if (cool <= 0) {
-              const win = s0 === s1 ? (Math.random() < 0.5 ? 0 : 1) : s0 > s1 ? 0 : 1;
-              score[win] += 1;
               cool = 0.7;
-              flash = 0.28;
-              env.sfx?.pop?.();
-              fx.punch(0.55);
-              const mx = (b[0].x + b[1].x) / 2;
-              const my = (b[0].y + b[1].y) / 2;
-              for (let i = 0; i < 10; i++) {
-                const a = Math.random() * Math.PI * 2;
-                const sp = 0.2 + Math.random() * 0.45;
-                bits.push({ x: mx, y: my, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.45, color: col[win] });
-              }
+              flash = 0.18;
+              env.sfx?.tap?.();
             }
           }
           const push = (0.2 - dist) * 0.55;
@@ -159,40 +199,82 @@ const BUILD = {
           b[1].x += nx * push;
           b[1].y += ny * push;
         }
+        for (let i = shots.length - 1; i >= 0; i--) {
+          const s = shots[i];
+          const foe = b[1 - s.p];
+          const ax = foe.x - s.x;
+          const ay = foe.y - s.y;
+          const al = Math.hypot(ax, ay) || 1;
+          s.vx += (ax / al) * dt * 0.9;
+          s.vy += (ay / al) * dt * 0.9;
+          const ssp = Math.hypot(s.vx, s.vy) || 1;
+          if (ssp > 0.9) {
+            s.vx *= 0.9 / ssp;
+            s.vy *= 0.9 / ssp;
+          }
+          s.x += s.vx * dt;
+          s.y += s.vy * dt;
+          s.life -= dt;
+          if ((s.x - foe.x) ** 2 + (s.y - foe.y) ** 2 < 0.028) {
+            hp[1 - s.p] = Math.max(0, hp[1 - s.p] - 1);
+            flash = 0.25;
+            burst(foe.x, foe.y, col[1 - s.p]);
+            env.sfx?.hit?.();
+            shots.splice(i, 1);
+            continue;
+          }
+          const sd = Math.hypot(s.x, s.y) || 1;
+          if (sd > 0.78) {
+            const nx = s.x / sd;
+            const ny = s.y / sd;
+            const v = s.vx * nx + s.vy * ny;
+            if (v > 0) {
+              s.vx -= 2 * v * nx;
+              s.vy -= 2 * v * ny;
+            }
+            s.x = nx * 0.78;
+            s.y = ny * 0.78;
+          }
+          if (s.life <= 0) shots.splice(i, 1);
+        }
         for (let i = bits.length - 1; i >= 0; i--) {
           bits[i].x += bits[i].vx * dt;
           bits[i].y += bits[i].vy * dt;
           bits[i].life -= dt;
           if (bits[i].life <= 0) bits.splice(i, 1);
         }
-        if (((score[0] >= need || score[1] >= need) && score[0] !== score[1]) || (clock > 32 && score[0] !== score[1])) {
-          return { winner: score[0] > score[1] ? 0 : 1, reason: "Tez takkar" };
+        if (hp[0] <= 0 || hp[1] <= 0) {
+          return { winner: hp[0] === hp[1] ? 0 : hp[0] > hp[1] ? 0 : 1, reason: "Jaan khatam" };
         }
         return null;
       },
       hud() {
-        return `${score[0]} – ${score[1]} takkar`;
+        const who = power[0] > 0 || ammo[0] > 0 ? 0 : power[1] > 0 || ammo[1] > 0 ? 1 : -1;
+        if (who >= 0) return `${shortName(env.names[who])} ke paas magic`;
+        return `${hp[0]} – ${hp[1]} jaan`;
       },
       draw(ctx, w, h) {
         ctx.fillStyle = "#070910";
         ctx.fillRect(0, 0, w, h);
         const n0 = shortName(env.names[0]);
         const n1 = shortName(env.names[1]);
-        text(ctx, n0, w * 0.24, h * 0.1, { size: 15, color: col[0], weight: 800 });
-        text(ctx, n1, w * 0.76, h * 0.1, { size: 15, color: col[1], weight: 800 });
-        text(ctx, `${score[0]}`, w * 0.24, h * 0.17, { size: 36, color: "#f7f4ea", weight: 800 });
-        text(ctx, `${score[1]}`, w * 0.76, h * 0.17, { size: 36, color: "#f7f4ea", weight: 800 });
+        text(ctx, n0, w * 0.22, h * 0.06, { size: 14, color: col[0], weight: 800 });
+        text(ctx, n1, w * 0.78, h * 0.06, { size: 14, color: col[1], weight: 800 });
+        for (let i = 0; i < maxHp; i++) {
+          heartIcon(ctx, w * 0.22 - 72 + i * 15, h * 0.1, i < hp[0], col[0]);
+          heartIcon(ctx, w * 0.78 - 72 + i * 15, h * 0.1, i < hp[1], col[1]);
+        }
         const cx = w / 2;
         const cy = h * 0.56;
-        const R = Math.min(w * 0.4, h * 0.3);
-        ctx.strokeStyle = "rgba(120,160,210,0.18)";
+        const R = Math.min(w * 0.49, h * 0.44);
+        ctx.strokeStyle = "rgba(120,160,210,0.16)";
         ctx.lineWidth = 1;
         for (let i = 1; i <= 3; i++) {
           ctx.beginPath();
           ctx.arc(cx, cy, (R * i) / 3, 0, Math.PI * 2);
           ctx.stroke();
         }
-        ctx.strokeStyle = flash > 0 ? "#fff6d0" : "rgba(244,246,252,0.9)";
+        ctx.strokeStyle = flash > 0 ? "#fff6d0" : "rgba(244,246,252,0.92)";
         ctx.lineWidth = 4;
         ctx.beginPath();
         ctx.arc(cx, cy, R, 0, Math.PI * 2);
@@ -207,10 +289,47 @@ const BUILD = {
           ctx.fill();
         }
         ctx.globalAlpha = 1;
+        if (magic) {
+          const [px, py] = put(magic.x, magic.y);
+          const spin = clock * 3;
+          ctx.save();
+          ctx.translate(px, py);
+          ctx.rotate(spin);
+          ctx.fillStyle = "#ffe08a";
+          ctx.shadowColor = "#ffd15a";
+          ctx.shadowBlur = 16;
+          ctx.beginPath();
+          for (let i = 0; i < 4; i++) {
+            const a = (i / 4) * Math.PI * 2;
+            ctx.lineTo(Math.cos(a) * 14, Math.sin(a) * 14);
+            ctx.lineTo(Math.cos(a + 0.4) * 5, Math.sin(a + 0.4) * 5);
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+          ctx.shadowBlur = 0;
+        }
+        if (heal) {
+          const [px, py] = put(heal.x, heal.y);
+          ctx.shadowColor = "#7dffb3";
+          ctx.shadowBlur = 12;
+          heartIcon(ctx, px, py, true, "#7dffb3");
+          ctx.shadowBlur = 0;
+        }
+        for (const s of shots) {
+          const [px, py] = put(s.x, s.y);
+          ctx.fillStyle = col[s.p];
+          ctx.shadowColor = col[s.p];
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.arc(px, py, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.shadowBlur = 0;
         for (let p = 0; p < 2; p++) {
           trail[p].forEach((t, i) => {
             const [px, py] = put(t.x, t.y);
-            ctx.globalAlpha = (i + 1) / trail[p].length * 0.35;
+            ctx.globalAlpha = ((i + 1) / trail[p].length) * 0.35;
             ctx.fillStyle = col[p];
             ctx.beginPath();
             ctx.arc(px, py, 4, 0, Math.PI * 2);
@@ -220,14 +339,21 @@ const BUILD = {
         ctx.globalAlpha = 1;
         for (let p = 0; p < 2; p++) {
           const [px, py] = put(b[p].x, b[p].y);
-          const rr = Math.max(18, R * 0.11);
-          rageFace(ctx, px, py, rr, col[p], score[p] < score[1 - p]);
+          const rr = 18;
+          if (ammo[p] > 0) {
+            ctx.strokeStyle = "#ffe08a";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(px, py, rr + 8, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          rageFace(ctx, px, py, rr, col[p], hp[p] <= 3);
           ctx.fillStyle = "rgba(6,8,16,0.78)";
           const label = p === 0 ? n0 : n1;
-          const tw = Math.min(108, label.length * 7 + 16);
-          roundRect(ctx, px - tw / 2, py + rr + 6, tw, 16, 8);
+          const tw = Math.min(100, label.length * 7 + 14);
+          roundRect(ctx, px - tw / 2, py + rr + 5, tw, 16, 8);
           ctx.fill();
-          text(ctx, label, px, py + rr + 18, { size: 11, color: col[p], weight: 700 });
+          text(ctx, label, px, py + rr + 17, { size: 11, color: col[p], weight: 700 });
         }
       },
     };
