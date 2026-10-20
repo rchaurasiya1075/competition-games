@@ -3,7 +3,7 @@ import { bar, drawBackdrop, drawFighter, fx, roundRect, shortName, text } from "
 export const LEVELS = ["Mela", "Kasba", "Zila", "Rajya", "Rashtriya"];
 
 export const GAMES = [
-  { id: "takkar", name: "Takkar", line: "Magic se vaar. Jaan lo to badhe. Jiski jaan khatam, wahi haara." },
+  { id: "takkar", name: "Takkar", line: "Bandook, chaku, bomb ya dhal. Jiski jaan khatam, wahi haara." },
   { id: "rassi", name: "Rassi Khich", line: "Dono taraf khicho. Rassi apne kone tak le jao." },
   { id: "kusti", name: "Kusti", line: "Sahi mauke par pakad. Pehle paanch pakad." },
   { id: "bahu", name: "Bahu Bali", line: "Haath dabao, lekin thak mat jaana." },
@@ -71,22 +71,34 @@ const BUILD = {
       { x: -0.46, y: 0.12, vx: 0.22, vy: -0.48 },
       { x: 0.44, y: -0.16, vx: -0.18, vy: 0.5 },
     ];
-    const hp = [8, 8];
-    const maxHp = 10;
+    const hp = [12, 12];
+    const maxHp = 14;
     const trail = [[], []];
     const bits = [];
     const shots = [];
-    const power = [0, 0];
+    const bombs = [];
+    const blasts = [];
+    const gear = [null, null];
     const ammo = [0, 0];
     const gunCool = [0, 0];
+    const knife = [0, 0];
+    const cuts = [0, 0];
+    const shield = [0, 0];
+    const shieldT = [0, 0];
+    const lock = [0, 0];
+    const bombIn = [0, 0];
     let magic = null;
+    let guard = null;
     let heal = null;
-    let magicAt = 1.2;
-    let healAt = 3.2;
+    let magicAt = 1.1;
+    let guardAt = 7;
+    let healAt = 10;
     let cool = 0.4;
     let flash = 0;
     let clock = 0;
     let nudged = false;
+    const kinds = ["gun", "chaku", "bomb"];
+    let kindN = Math.floor(Math.random() * 3);
 
     function burst(x, y, color) {
       for (let i = 0; i < 8; i++) {
@@ -94,6 +106,33 @@ const BUILD = {
         const sp = 0.18 + Math.random() * 0.4;
         bits.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.4, color });
       }
+    }
+
+    function hurt(p, color, n = 1) {
+      if (lock[p] > 0) return false;
+      let left = n;
+      if (shield[p] > 0 && left > 0) {
+        shield[p] -= 1;
+        left -= 1;
+        burst(b[p].x, b[p].y, "#9ad7ff");
+        env.sfx?.tap?.();
+        if (left <= 0) {
+          lock[p] = 0.35;
+          return false;
+        }
+      }
+      hp[p] = Math.max(0, hp[p] - left);
+      lock[p] = 0.55;
+      flash = 0.22;
+      burst(b[p].x, b[p].y, color || col[p]);
+      env.sfx?.hit?.();
+      return true;
+    }
+
+    function spot(rad) {
+      const a = Math.random() * Math.PI * 2;
+      const r = rad * (0.55 + Math.random() * 0.45);
+      return { x: Math.cos(a) * r, y: Math.sin(a) * r };
     }
 
     return {
@@ -104,14 +143,12 @@ const BUILD = {
         flash = Math.max(0, flash - dt);
         clock += dt;
         if (!magic && clock >= magicAt) {
-          const a = Math.random() * Math.PI * 2;
-          magic = { x: Math.cos(a) * 0.12, y: Math.sin(a) * 0.12 };
+          kindN = (kindN + 1) % kinds.length;
+          magic = { ...spot(0.55), kind: kinds[kindN] };
         }
-        if (!heal && clock >= healAt) {
-          const a = Math.random() * Math.PI * 2;
-          heal = { x: Math.cos(a) * 0.42, y: Math.sin(a) * 0.42 };
-        }
-        if (!nudged && clock > 6 && hp[0] === 8 && hp[1] === 8 && !power[0] && !power[1]) {
+        if (!guard && clock >= guardAt) guard = { ...spot(0.48), kind: "dhal" };
+        if (!heal && clock >= healAt) heal = spot(0.5);
+        if (!nudged && clock > 6 && hp[0] === 12 && hp[1] === 12 && !gear[0] && !gear[1]) {
           nudged = true;
           for (let p = 0; p < 2; p++) {
             const d = Math.hypot(b[p].x, b[p].y) || 1;
@@ -120,6 +157,13 @@ const BUILD = {
           }
         }
         for (let p = 0; p < 2; p++) {
+          lock[p] = Math.max(0, lock[p] - dt);
+          knife[p] = Math.max(0, knife[p] - dt);
+          if (knife[p] <= 0) cuts[p] = 0;
+          if (shieldT[p] > 0) {
+            shieldT[p] -= dt;
+            if (shieldT[p] <= 0) shield[p] = 0;
+          }
           const me = b[p];
           const want = 1.05 + nerve(env, p) * 0.18;
           const sp = Math.hypot(me.vx, me.vy) || 1;
@@ -147,33 +191,73 @@ const BUILD = {
           trail[p].push({ x: me.x, y: me.y });
           if (trail[p].length > 7) trail[p].shift();
           if (magic && (me.x - magic.x) ** 2 + (me.y - magic.y) ** 2 < 0.055) {
-            power[p] = 4;
-            ammo[p] = 2;
-            gunCool[p] = 0.45;
+            const kind = magic.kind;
+            gear[p] = kind;
+            ammo[p] = 0;
+            cuts[p] = 0;
+            knife[p] = 0;
+            bombIn[p] = 0;
+            if (kind === "gun") {
+              ammo[p] = 3;
+              gunCool[p] = 0.4;
+            } else if (kind === "chaku") {
+              knife[p] = 4.2;
+              cuts[p] = 2;
+              gunCool[p] = 0.35;
+            } else {
+              bombIn[p] = 0.32;
+            }
             magic = null;
-            magicAt = clock + 3.2;
-            burst(me.x, me.y, "#ffe08a");
+            magicAt = clock + 2.2;
+            burst(me.x, me.y, kind === "bomb" ? "#ff8a4a" : "#ffe08a");
             env.sfx?.pop?.();
+          }
+          if (guard && (me.x - guard.x) ** 2 + (me.y - guard.y) ** 2 < 0.055) {
+            shield[p] = 1;
+            shieldT[p] = 5.5;
+            guard = null;
+            guardAt = clock + 16;
+            burst(me.x, me.y, "#9ad7ff");
+            env.sfx?.beep?.();
           }
           if (heal && (me.x - heal.x) ** 2 + (me.y - heal.y) ** 2 < 0.055) {
             hp[p] = Math.min(maxHp, hp[p] + 1);
             heal = null;
-            healAt = clock + 6;
+            healAt = clock + 18;
             burst(me.x, me.y, "#7dffb3");
             env.sfx?.beep?.();
           }
-          if (ammo[p] > 0) {
+          if (gear[p] === "chaku" && cuts[p] > 0) {
             gunCool[p] -= dt;
             if (gunCool[p] <= 0) {
               const foe = b[1 - p];
-              const aim = Math.atan2(foe.y - me.y, foe.x - me.x) + (Math.random() - 0.5) * 0.35;
-              const spd = 1.15;
-              shots.push({ x: me.x, y: me.y, vx: Math.cos(aim) * spd, vy: Math.sin(aim) * spd, p, life: 1.5 });
-              ammo[p] -= 1;
-              gunCool[p] = 1.05;
-              if (ammo[p] <= 0) power[p] = 0;
+              const aim = Math.atan2(foe.y - me.y, foe.x - me.x) + (Math.random() - 0.5) * 0.2;
+              shots.push({ x: me.x, y: me.y, vx: Math.cos(aim) * 1.25, vy: Math.sin(aim) * 1.25, p, life: 1.6, blade: true });
+              cuts[p] -= 1;
+              gunCool[p] = 0.7;
+              if (cuts[p] <= 0) gear[p] = null;
             }
-          } else power[p] = 0;
+          }
+          if (gear[p] === "gun" && ammo[p] > 0) {
+            gunCool[p] -= dt;
+            if (gunCool[p] <= 0) {
+              const foe = b[1 - p];
+              const aim = Math.atan2(foe.y - me.y, foe.x - me.x) + (Math.random() - 0.5) * 0.28;
+              shots.push({ x: me.x, y: me.y, vx: Math.cos(aim) * 1.05, vy: Math.sin(aim) * 1.05, p, life: 2 });
+              ammo[p] -= 1;
+              gunCool[p] = 0.85;
+              if (ammo[p] <= 0) gear[p] = null;
+            }
+          }
+          if (bombIn[p] > 0) {
+            bombIn[p] -= dt;
+            if (bombIn[p] <= 0) {
+              const foe = b[1 - p];
+              const aim = Math.atan2(foe.y - me.y, foe.x - me.x);
+              bombs.push({ x: me.x, y: me.y, vx: Math.cos(aim) * 0.55, vy: Math.sin(aim) * 0.55, p, fuse: 1.05 });
+              gear[p] = null;
+            }
+          }
         }
         const dx = b[1].x - b[0].x;
         const dy = b[1].y - b[0].y;
@@ -188,8 +272,8 @@ const BUILD = {
             b[1].vx -= rel * nx;
             b[1].vy -= rel * ny;
             if (cool <= 0) {
-              cool = 0.7;
-              flash = 0.18;
+              cool = 1.05;
+              flash = 0.16;
               env.sfx?.tap?.();
             }
           }
@@ -205,37 +289,56 @@ const BUILD = {
           const ax = foe.x - s.x;
           const ay = foe.y - s.y;
           const al = Math.hypot(ax, ay) || 1;
-          s.vx += (ax / al) * dt * 1.35;
-          s.vy += (ay / al) * dt * 1.35;
+          s.vx += (ax / al) * dt * 2.2;
+          s.vy += (ay / al) * dt * 2.2;
           const ssp = Math.hypot(s.vx, s.vy) || 1;
-          if (ssp > 0.9) {
-            s.vx *= 0.9 / ssp;
-            s.vy *= 0.9 / ssp;
+          if (ssp > 1.15) {
+            s.vx *= 1.15 / ssp;
+            s.vy *= 1.15 / ssp;
           }
           s.x += s.vx * dt;
           s.y += s.vy * dt;
           s.life -= dt;
-          if ((s.x - foe.x) ** 2 + (s.y - foe.y) ** 2 < 0.04) {
-            hp[1 - s.p] = Math.max(0, hp[1 - s.p] - 1);
-            flash = 0.25;
-            burst(foe.x, foe.y, col[1 - s.p]);
-            env.sfx?.hit?.();
+          if ((s.x - foe.x) ** 2 + (s.y - foe.y) ** 2 < 0.05) {
+            hurt(1 - s.p, col[s.p]);
             shots.splice(i, 1);
             continue;
           }
-          const sd = Math.hypot(s.x, s.y) || 1;
-          if (sd > 0.93) {
-            const nx = s.x / sd;
-            const ny = s.y / sd;
-            const v = s.vx * nx + s.vy * ny;
-            if (v > 0) {
-              s.vx -= 2 * v * nx;
-              s.vy -= 2 * v * ny;
-            }
-            s.x = nx * 0.93;
-            s.y = ny * 0.93;
+          if (s.life <= 0 || Math.hypot(s.x, s.y) > 1.05) shots.splice(i, 1);
+        }
+        for (let i = bombs.length - 1; i >= 0; i--) {
+          const o = bombs[i];
+          o.fuse -= dt;
+          const foe = b[1 - o.p];
+          if (o.fuse > 0.35) {
+            const ax = foe.x - o.x;
+            const ay = foe.y - o.y;
+            const al = Math.hypot(ax, ay) || 1;
+            o.vx += (ax / al) * dt * 0.8;
+            o.vy += (ay / al) * dt * 0.8;
           }
-          if (s.life <= 0) shots.splice(i, 1);
+          o.vx *= 0.99;
+          o.vy *= 0.99;
+          o.x += o.vx * dt;
+          o.y += o.vy * dt;
+          const od = Math.hypot(o.x, o.y) || 1;
+          if (od > 0.86) {
+            o.x *= 0.86 / od;
+            o.y *= 0.86 / od;
+            o.vx *= -0.4;
+            o.vy *= -0.4;
+          }
+          if (o.fuse <= 0) {
+            const foe = 1 - o.p;
+            const hit = (b[foe].x - o.x) ** 2 + (b[foe].y - o.y) ** 2 < 0.16;
+            blasts.push({ x: o.x, y: o.y, life: 0.35, p: o.p });
+            if (hit) hurt(foe, "#ff8a4a", 2);
+            bombs.splice(i, 1);
+          }
+        }
+        for (let i = blasts.length - 1; i >= 0; i--) {
+          blasts[i].life -= dt;
+          if (blasts[i].life <= 0) blasts.splice(i, 1);
         }
         for (let i = bits.length - 1; i >= 0; i--) {
           bits[i].x += bits[i].vx * dt;
@@ -244,25 +347,30 @@ const BUILD = {
           if (bits[i].life <= 0) bits.splice(i, 1);
         }
         if (hp[0] <= 0 || hp[1] <= 0) {
-          return { winner: hp[0] === hp[1] ? 0 : hp[0] > hp[1] ? 0 : 1, reason: "Jaan khatam" };
+          return { winner: hp[0] > hp[1] ? 0 : 1, reason: "Jaan khatam" };
         }
         return null;
       },
       hud() {
-        const who = power[0] > 0 || ammo[0] > 0 ? 0 : power[1] > 0 || ammo[1] > 0 ? 1 : -1;
-        if (who >= 0) return `${shortName(env.names[who])} ke paas magic`;
-        return `${hp[0]} – ${hp[1]} jaan`;
+        const base = `${hp[0]} – ${hp[1]} jaan`;
+        const name = { gun: "bandook", chaku: "chaku", bomb: "bomb" };
+        for (let p = 0; p < 2; p++) {
+          if (name[gear[p]]) return `${shortName(env.names[p])} ke paas ${name[gear[p]]} · ${base}`;
+          if (shield[p] > 0) return `${shortName(env.names[p])} ki dhal · ${base}`;
+        }
+        return base;
       },
       draw(ctx, w, h) {
         ctx.fillStyle = "#070910";
         ctx.fillRect(0, 0, w, h);
         const n0 = shortName(env.names[0]);
         const n1 = shortName(env.names[1]);
-        text(ctx, n0, w * 0.22, h * 0.06, { size: 14, color: col[0], weight: 800 });
-        text(ctx, n1, w * 0.78, h * 0.06, { size: 14, color: col[1], weight: 800 });
+        text(ctx, n0, w * 0.22, h * 0.055, { size: 14, color: col[0], weight: 800 });
+        text(ctx, n1, w * 0.78, h * 0.055, { size: 14, color: col[1], weight: 800 });
+        const gap = Math.min(11, (w * 0.38) / maxHp);
         for (let i = 0; i < maxHp; i++) {
-          heartIcon(ctx, w * 0.22 - 72 + i * 15, h * 0.1, i < hp[0], col[0]);
-          heartIcon(ctx, w * 0.78 - 72 + i * 15, h * 0.1, i < hp[1], col[1]);
+          heartIcon(ctx, w * 0.22 - (maxHp * gap) / 2 + i * gap, h * 0.095, i < hp[0], col[0]);
+          heartIcon(ctx, w * 0.78 - (maxHp * gap) / 2 + i * gap, h * 0.095, i < hp[1], col[1]);
         }
         const top = Math.min(h * 0.16, 92);
         const R = Math.min(w * 0.5 - 2, (h - top - 4) / 2);
@@ -290,41 +398,68 @@ const BUILD = {
           ctx.fill();
         }
         ctx.globalAlpha = 1;
-        if (magic) {
-          const [px, py] = put(magic.x, magic.y);
-          const spin = clock * 3;
-          ctx.save();
-          ctx.translate(px, py);
-          ctx.rotate(spin);
-          ctx.fillStyle = "#ffe08a";
-          ctx.shadowColor = "#ffd15a";
-          ctx.shadowBlur = 16;
-          ctx.beginPath();
-          for (let i = 0; i < 4; i++) {
-            const a = (i / 4) * Math.PI * 2;
-            ctx.lineTo(Math.cos(a) * 14, Math.sin(a) * 14);
-            ctx.lineTo(Math.cos(a + 0.4) * 5, Math.sin(a + 0.4) * 5);
-          }
-          ctx.closePath();
-          ctx.fill();
-          ctx.restore();
-          ctx.shadowBlur = 0;
-        }
+        const paintLoot = (item, label) => {
+          if (!item) return;
+          const [px, py] = put(item.x, item.y);
+          weaponGlyph(ctx, px, py, item.kind || "jaan", clock);
+          text(ctx, label, px, py + 18, { size: 10, color: "#f7f4ea", weight: 700 });
+        };
+        paintLoot(magic, magic ? { gun: "Bandook", chaku: "Chaku", bomb: "Bomb" }[magic.kind] : "");
+        paintLoot(guard, "Dhal");
         if (heal) {
           const [px, py] = put(heal.x, heal.y);
           ctx.shadowColor = "#7dffb3";
           ctx.shadowBlur = 12;
           heartIcon(ctx, px, py, true, "#7dffb3");
           ctx.shadowBlur = 0;
+          text(ctx, "Jaan", px, py + 16, { size: 10, color: "#d8ffe8", weight: 700 });
         }
         for (const s of shots) {
           const [px, py] = put(s.x, s.y);
-          ctx.fillStyle = col[s.p];
-          ctx.shadowColor = col[s.p];
-          ctx.shadowBlur = 10;
+          ctx.save();
+          ctx.translate(px, py);
+          ctx.rotate(Math.atan2(s.vy, s.vx));
+          ctx.fillStyle = s.blade ? "#f4f7ff" : col[s.p];
+          ctx.shadowColor = ctx.fillStyle;
+          ctx.shadowBlur = 8;
+          if (s.blade) {
+            ctx.beginPath();
+            ctx.moveTo(8, 0);
+            ctx.lineTo(-6, -3);
+            ctx.lineTo(-6, 3);
+            ctx.fill();
+          } else {
+            ctx.beginPath();
+            ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+        for (const o of bombs) {
+          const [px, py] = put(o.x, o.y);
+          ctx.fillStyle = "#ff6a3d";
+          ctx.shadowColor = "#ff6a3d";
+          ctx.shadowBlur = 12;
           ctx.beginPath();
-          ctx.arc(px, py, 4, 0, Math.PI * 2);
+          ctx.arc(px, py, 7, 0, Math.PI * 2);
           ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = "#ffe08a";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(px, py - 7);
+          ctx.lineTo(px + 5, py - 13);
+          ctx.stroke();
+        }
+        for (const blast of blasts) {
+          const [px, py] = put(blast.x, blast.y);
+          ctx.globalAlpha = blast.life * 2.2;
+          ctx.strokeStyle = "#ffb080";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(px, py, (0.38 - blast.life) * R, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.globalAlpha = 1;
         }
         ctx.shadowBlur = 0;
         for (let p = 0; p < 2; p++) {
@@ -341,14 +476,28 @@ const BUILD = {
         for (let p = 0; p < 2; p++) {
           const [px, py] = put(b[p].x, b[p].y);
           const rr = 18;
-          if (ammo[p] > 0) {
-            ctx.strokeStyle = "#ffe08a";
-            ctx.lineWidth = 2;
+          if (shield[p] > 0) {
+            ctx.strokeStyle = "#9ad7ff";
+            ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.arc(px, py, rr + 8, 0, Math.PI * 2);
+            ctx.arc(px, py, rr + 8, Math.PI * 0.15, Math.PI * 1.15);
             ctx.stroke();
           }
-          rageFace(ctx, px, py, rr, col[p], hp[p] <= 3);
+          if (knife[p] > 0 && cuts[p] > 0) {
+            ctx.save();
+            ctx.translate(px, py);
+            ctx.rotate(clock * 6);
+            ctx.fillStyle = "#f4f7ff";
+            ctx.beginPath();
+            ctx.moveTo(rr + 2, 0);
+            ctx.lineTo(rr + 16, -3);
+            ctx.lineTo(rr + 16, 3);
+            ctx.fill();
+            ctx.restore();
+          }
+          if (gear[p] === "gun" && ammo[p] > 0) weaponGlyph(ctx, px + rr + 6, py - rr, "gun", 0);
+          if (bombIn[p] > 0) weaponGlyph(ctx, px + rr + 4, py - rr, "bomb", 0);
+          rageFace(ctx, px, py, rr, col[p], hp[p] <= 4);
           ctx.fillStyle = "rgba(6,8,16,0.78)";
           const label = p === 0 ? n0 : n1;
           const tw = Math.min(100, label.length * 7 + 14);
@@ -2830,6 +2979,50 @@ const BUILD = {
     };
   },
 };
+
+function weaponGlyph(ctx, x, y, kind) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.shadowBlur = 10;
+  if (kind === "gun") {
+    ctx.fillStyle = "#ffe08a";
+    ctx.shadowColor = "#ffe08a";
+    ctx.fillRect(-8, -3, 14, 6);
+    ctx.fillRect(4, -2, 7, 3);
+    ctx.fillRect(-4, 3, 4, 5);
+  } else if (kind === "chaku") {
+    ctx.fillStyle = "#f4f7ff";
+    ctx.shadowColor = "#f4f7ff";
+    ctx.beginPath();
+    ctx.moveTo(-4, 8);
+    ctx.lineTo(2, -12);
+    ctx.lineTo(6, -8);
+    ctx.lineTo(0, 10);
+    ctx.fill();
+    ctx.fillStyle = "#c9a36a";
+    ctx.fillRect(-5, 6, 10, 4);
+  } else if (kind === "bomb") {
+    ctx.fillStyle = "#ff6a3d";
+    ctx.shadowColor = "#ff6a3d";
+    ctx.beginPath();
+    ctx.arc(0, 2, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#ffe08a";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, -5);
+    ctx.lineTo(5, -11);
+    ctx.stroke();
+  } else if (kind === "dhal") {
+    ctx.strokeStyle = "#9ad7ff";
+    ctx.shadowColor = "#9ad7ff";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, 9, Math.PI * 0.85, Math.PI * 2.15);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
 
 function toothedWheel(ctx, x, y, r, a, color) {
   ctx.save();
