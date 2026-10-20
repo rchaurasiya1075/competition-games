@@ -21,7 +21,7 @@ export const GAMES = [
   { id: "kirane", name: "Kirane", line: "Parabola par rangin kirane. Zyada pakdo, jeeto." },
   { id: "gada", name: "Gada Gola", line: "Chain ki gada. Jiski jaan pehle khatam, woh haara." },
   { id: "pees", name: "Gend Pesai", line: "Do roller. Zyada gend peesne wala jeete." },
-  { id: "rage", name: "Rage Gola", line: "Jo zyada mare, woh tez. Aakhri dil wala jeete." },
+  { id: "rage", name: "Rage Gola", line: "Atom chhuo, tabhi goli. Dil sirf vaar par kate." },
 ];
 
 function skillOf(level) {
@@ -1960,25 +1960,39 @@ const BUILD = {
   },
 
   rage(env) {
-    const hearts = [10, 10];
+    const hearts = [8, 8];
     const b = [
-      { x: -0.28, y: 0.05, vx: 0.55, vy: -0.35, gun: false, cool: 0.9 },
-      { x: 0.3, y: -0.12, vx: -0.48, vy: 0.4, gun: false, cool: 1.05 },
+      { x: -0.34, y: 0.16, vx: 0.62, vy: -0.28, gun: false, ammo: 0, cool: 0 },
+      { x: 0.36, y: -0.18, vx: -0.5, vy: 0.4, gun: false, ammo: 0, cool: 0 },
     ];
     let weapon = null;
+    let armAt = 1.4;
     const shots = [];
     const bits = [];
     const hurt = [0, 0];
     let clock = 0;
     const col = [env.p1.cloth || "#ff4b6e", env.p2.cloth || "#79d2ff"];
-    const rageOf = (p) => 1 + (10 - hearts[p]) * 0.18;
+    const rageOf = (p) => 1 + (8 - hearts[p]) * 0.14;
 
     function burst(x, y, color) {
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 8; i++) {
         const a = Math.random() * Math.PI * 2;
-        const s = 0.25 + Math.random() * 0.7;
-        bits.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.45 + Math.random() * 0.35, color });
+        const s = 0.2 + Math.random() * 0.55;
+        bits.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.4 + Math.random() * 0.3, color });
       }
+    }
+
+    function dropAtom(from) {
+      const a = Math.random() * Math.PI * 2;
+      const dist = 0.34 + Math.random() * 0.12;
+      let x = from.x + Math.cos(a) * dist;
+      let y = from.y + Math.sin(a) * dist;
+      const d = Math.hypot(x, y) || 1;
+      if (d > 0.62) {
+        x *= 0.62 / d;
+        y *= 0.62 / d;
+      }
+      weapon = { x, y, lock: 0.85 };
     }
 
     return {
@@ -1986,13 +2000,25 @@ const BUILD = {
       verbs: ["Tez", "Tez"],
       update(dt) {
         clock += dt;
+        if (!weapon && clock >= armAt) {
+          const a = Math.random() * Math.PI * 2;
+          weapon = { x: Math.cos(a) * 0.15, y: Math.sin(a) * 0.15, lock: 0.3 };
+        }
+        if (weapon) {
+          weapon.lock = Math.max(0, weapon.lock - dt);
+          if (weapon.lock <= 0) {
+            weapon.spin = (weapon.spin || 0) + dt * 0.9;
+            weapon.x = Math.cos(weapon.spin) * 0.28;
+            weapon.y = Math.sin(weapon.spin) * 0.28;
+          }
+        }
         for (let p = 0; p < 2; p++) hurt[p] = Math.max(0, hurt[p] - dt);
         for (let p = 0; p < 2; p++) {
           const me = b[p];
           const foe = b[1 - p];
           const rage = rageOf(p);
           const sp0 = Math.hypot(me.vx, me.vy) || 1;
-          const want = (0.62 + nerve(env, p) * 0.08) * Math.min(rage, 2.1);
+          const want = (0.42 + nerve(env, p) * 0.05) * Math.min(rage, 1.55);
           me.vx *= want / sp0;
           me.vy *= want / sp0;
           me.x += me.vx * dt;
@@ -2006,23 +2032,30 @@ const BUILD = {
               me.vx -= 2 * v * nx;
               me.vy -= 2 * v * ny;
             }
-            const slip = (Math.random() - 0.5) * 0.08;
+            const slip = (Math.random() - 0.5) * 0.06;
             me.vx += -ny * slip;
             me.vy += nx * slip;
             me.x = nx * 0.78;
             me.y = ny * 0.78;
           }
-          if (weapon && (me.x - weapon.x) ** 2 + (me.y - weapon.y) ** 2 < 0.02) {
+          if (weapon && weapon.lock <= 0 && (me.x - weapon.x) ** 2 + (me.y - weapon.y) ** 2 < 0.05) {
             me.gun = true;
+            me.ammo = 2;
+            me.cool = 0.35;
             weapon = null;
-            burst(me.x, me.y, "#e2b15a");
+            env.sfx?.beep?.();
           }
+          if (!me.gun) continue;
           me.cool -= dt;
-          if (me.cool <= 0) {
-            const aim = Math.atan2(foe.y - me.y, foe.x - me.x) + (Math.random() - 0.5) * (1.05 - nerve(env, p)) * 0.45;
-            const spd = (me.gun ? 1.25 : 0.95) * Math.min(rage, 1.8);
-            shots.push({ x: me.x, y: me.y, vx: Math.cos(aim) * spd, vy: Math.sin(aim) * spd, p, life: 1.35 });
-            me.cool = Math.max(0.32, (me.gun ? 0.4 : 0.62) - (10 - hearts[p]) * 0.025);
+          if (me.cool > 0 || me.ammo <= 0) continue;
+          const aim = Math.atan2(foe.y - me.y, foe.x - me.x) + (Math.random() - 0.5) * 0.22;
+          const spd = 0.85 * Math.min(rage, 1.5);
+          shots.push({ x: me.x, y: me.y, vx: Math.cos(aim) * spd, vy: Math.sin(aim) * spd, p, life: 2.2 });
+          me.ammo -= 1;
+          me.cool = 0.95;
+          if (me.ammo <= 0) {
+            me.gun = false;
+            dropAtom(me);
           }
         }
         const dx = b[1].x - b[0].x;
@@ -2047,16 +2080,27 @@ const BUILD = {
         }
         for (let i = shots.length - 1; i >= 0; i--) {
           const s = shots[i];
+          const foe = b[1 - s.p];
+          const aimx = foe.x - s.x;
+          const aimy = foe.y - s.y;
+          const alen = Math.hypot(aimx, aimy) || 1;
+          s.vx += (aimx / alen) * dt * 2.2;
+          s.vy += (aimy / alen) * dt * 2.2;
+          const ssp = Math.hypot(s.vx, s.vy) || 1;
+          if (ssp > 1.15) {
+            s.vx *= 1.15 / ssp;
+            s.vy *= 1.15 / ssp;
+          }
           s.x += s.vx * dt;
           s.y += s.vy * dt;
           s.life -= dt;
-          const foe = b[1 - s.p];
-          if ((s.x - foe.x) ** 2 + (s.y - foe.y) ** 2 < 0.012) {
+          if (hurt[1 - s.p] <= 0 && (s.x - foe.x) ** 2 + (s.y - foe.y) ** 2 < 0.02) {
             hearts[1 - s.p] -= 1;
-            hurt[1 - s.p] = 0.35;
-            foe.vx += s.vx * 0.15;
-            foe.vy += s.vy * 0.15;
+            hurt[1 - s.p] = 0.55;
+            foe.vx += s.vx * 0.2;
+            foe.vy += s.vy * 0.2;
             burst(foe.x, foe.y, col[1 - s.p]);
+            env.sfx?.hit?.();
             shots.splice(i, 1);
             continue;
           }
@@ -2075,26 +2119,25 @@ const BUILD = {
           if (s.life <= 0) shots.splice(i, 1);
         }
         for (let i = bits.length - 1; i >= 0; i--) {
-          const p = bits[i];
-          p.x += p.vx * dt;
-          p.y += p.vy * dt;
-          p.life -= dt;
-          if (p.life <= 0) bits.splice(i, 1);
+          const bit = bits[i];
+          bit.x += bit.vx * dt;
+          bit.y += bit.vy * dt;
+          bit.life -= dt;
+          if (bit.life <= 0) bits.splice(i, 1);
         }
         if (bits.length > 70) bits.splice(0, bits.length - 70);
-        if (!weapon && clock > 2.2 && Math.floor(clock / 4) !== Math.floor((clock - dt) / 4)) {
-          const a = Math.random() * Math.PI * 2;
-          weapon = { x: Math.cos(a) * 0.28, y: Math.sin(a) * 0.28 };
-        }
-        if (hearts[0] <= 0 || hearts[1] <= 0) {
+        if (hearts[0] <= 0 || hearts[1] <= 0 || (clock > 36 && hearts[0] !== hearts[1])) {
           const w = hearts[0] === hearts[1] ? 0 : hearts[0] > hearts[1] ? 0 : 1;
           return { winner: w, reason: "Aakhri dil bacha" };
         }
         return null;
       },
       hud() {
-        const hot = hearts[0] < hearts[1] ? 0 : 1;
-        return hearts[hot] <= 6 ? `${shortName(env.names[hot])} rage mein hai` : `${hearts[0]} – ${hearts[1]} dil`;
+        const holder = b[0].gun ? 0 : b[1].gun ? 1 : -1;
+        if (holder >= 0) return `${shortName(env.names[holder])} ke paas atom`;
+        if (hearts[0] < hearts[1]) return `${shortName(env.names[0])} rage mein hai`;
+        if (hearts[1] < hearts[0]) return `${shortName(env.names[1])} rage mein hai`;
+        return weapon ? "Atom ghum raha hai" : "Atom aa raha hai";
       },
       draw(ctx, w, h) {
         ctx.fillStyle = "#070b18";
@@ -2104,9 +2147,9 @@ const BUILD = {
         text(ctx, n0, w * 0.3, h * 0.2, { size: 20, color: col[0], weight: 800 });
         text(ctx, "VS", w / 2, h * 0.2, { size: 16, color: "#f4f6fb", weight: 800 });
         text(ctx, n1, w * 0.7, h * 0.2, { size: 20, color: col[1], weight: 800 });
-        for (let i = 0; i < 10; i++) {
-          heartIcon(ctx, w * 0.5 - 78 + i * 17, h * 0.07, i < hearts[0], col[0]);
-          heartIcon(ctx, w * 0.5 - 78 + i * 17, h * 0.12, i < hearts[1], col[1]);
+        for (let i = 0; i < 8; i++) {
+          heartIcon(ctx, w * 0.5 - 60 + i * 17, h * 0.07, i < hearts[0], col[0]);
+          heartIcon(ctx, w * 0.5 - 60 + i * 17, h * 0.12, i < hearts[1], col[1]);
         }
         const cx = w / 2;
         const cy = h * 0.58;
@@ -2146,24 +2189,38 @@ const BUILD = {
         }
         if (weapon) {
           const [px, py] = put(weapon.x, weapon.y);
-          ctx.strokeStyle = "#e2b15a";
-          ctx.lineWidth = 3;
+          const spin = clock * 3;
+          ctx.strokeStyle = "rgba(226,177,90,0.85)";
+          ctx.lineWidth = 1.5;
           ctx.beginPath();
-          ctx.arc(px, py, 16, 0, Math.PI * 2);
+          ctx.ellipse(px, py, 14, 6, spin, 0, Math.PI * 2);
           ctx.stroke();
-          ctx.strokeStyle = "#f4f1ea";
-          ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.moveTo(px - 7, py + 2);
-          ctx.lineTo(px + 8, py - 1);
-          ctx.moveTo(px + 5, py - 1);
-          ctx.lineTo(px + 5, py - 6);
+          ctx.ellipse(px, py, 14, 6, spin + 1.2, 0, Math.PI * 2);
           ctx.stroke();
+          ctx.fillStyle = "#ffe7a3";
+          ctx.shadowColor = "#e2b15a";
+          ctx.shadowBlur = 12;
+          ctx.beginPath();
+          ctx.arc(px, py, 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "#fff6d8";
+          ctx.beginPath();
+          ctx.arc(px + Math.cos(spin) * 14, py + Math.sin(spin) * 6, 2.2, 0, Math.PI * 2);
+          ctx.fill();
         }
         for (let p = 0; p < 2; p++) {
           const [px, py] = put(b[p].x, b[p].y);
           const rr = Math.max(16, R * 0.09) * (hurt[p] > 0 ? 1.08 : 1);
-          rageFace(ctx, px, py, rr, col[p], hearts[p] <= 6);
+          if (b[p].gun) {
+            ctx.strokeStyle = "#ffe7a3";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(px, py, rr + 7, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          rageFace(ctx, px, py, rr, col[p], hearts[p] <= 4);
           ctx.fillStyle = "rgba(6,8,16,0.72)";
           const label = p === 0 ? n0 : n1;
           ctx.font = `700 11px "Noto Sans Devanagari", FreeSans, sans-serif`;
