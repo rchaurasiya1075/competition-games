@@ -408,7 +408,7 @@ function showPick() {
   wrap.append(el("p", "kicker", LEVELS[S.level - 1]), el("h1", "", "Kaun sa dangal"));
   wrap.append(el("p", "lede", `${shortName(S.p1.name)} aur ${shortName(S.p2.name)} khud khelenge.`));
   const series = el("button", "game wide");
-  series.append(el("span", "mark", "POORI SERIES"), el("strong", "", "Unnis game, ek bajrang"), el("p", "", "Saare game khelo. Jis ke zyada jeet, wahi winner."));
+  series.append(el("span", "mark", "POORI SERIES"), el("strong", "", "Ikkis game, ek bajrang"), el("p", "", "Saare game khelo. Jis ke zyada jeet, wahi winner."));
   series.onclick = () => {
     unlock();
     S.series = { ids: GAMES.map((g) => g.id), index: 0, score: [0, 0] };
